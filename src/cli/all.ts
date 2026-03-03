@@ -6,14 +6,14 @@ import { runURL } from '../scenarios/index.js';
 import { generateReport, saveReport, loadReport } from '../reporter/index.js';
 import { generateHTML } from '../visualizer/index.js';
 
-function parseArgs(argv: string[]): { config: string; urls: string } {
+function parseArgs(argv: string[]): { config: string; urls: string[] } {
   let config = 'config.yaml';
-  let urls = 'urls/example.yaml';
+  const urls: string[] = [];
   for (let i = 2; i < argv.length; i++) {
     if (argv[i] === '--config' && argv[i + 1]) {
       config = argv[++i];
     } else if (argv[i] === '--urls' && argv[i + 1]) {
-      urls = argv[++i];
+      urls.push(argv[++i]);
     }
   }
   return { config, urls };
@@ -61,14 +61,31 @@ function mergeReports(reports: Report[]): Report {
   };
 }
 
-async function runAnalysis(args: { config: string; urls: string }): Promise<string[]> {
+async function resolveUrlFiles(urlArgs: string[]): Promise<string[]> {
+  if (urlArgs.length > 0) return urlArgs;
+  const entries = await fs.readdir('urls');
+  const yamlFiles = entries
+    .filter(f => f.endsWith('.yaml') || f.endsWith('.yml'))
+    .filter(f => f !== 'README.md')
+    .map(f => path.join('urls', f));
+  if (yamlFiles.length === 0) throw new Error('No YAML files found in urls/ directory.');
+  return yamlFiles;
+}
+
+async function runAnalysis(args: { config: string; urls: string[] }): Promise<string[]> {
   console.log('🚀 Tracemark - Performance Analysis');
   console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
   console.log(`Config: ${args.config}`);
-  console.log(`URLs: ${args.urls}`);
+
+  const urlFiles = await resolveUrlFiles(args.urls);
+  console.log(`URLs: ${urlFiles.join(', ')}`);
 
   const config = await loadYamlFile<Config>(args.config, 'Config');
-  const domainInputs = await loadYamlFile<DomainInput[]>(args.urls, 'URLs');
+  const domainInputs: DomainInput[] = [];
+  for (const urlFile of urlFiles) {
+    const entries = await loadYamlFile<DomainInput[]>(urlFile, 'URLs');
+    domainInputs.push(...entries);
+  }
 
   console.log(`Scenarios: ${config.scenarios.join(', ')}`);
   console.log(`Warm runs: ${config.warmRuns}`);
