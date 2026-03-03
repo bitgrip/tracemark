@@ -33,13 +33,20 @@ pnpm run analyze
 pnpm run analyze -- --urls urls/ecommerce.yaml
 ```
 
+## Example
+
+```yaml
+- name: Example Site
+  urls:
+    - https://example.com/
+```
+
 ## Multiple Files
 
 You can create separate YAML files for different groups:
 
 ```
 urls/
-├── example.yaml      # Default example
 ├── ecommerce.yaml    # E-commerce sites
 └── media.yaml        # Media/news sites
 ```

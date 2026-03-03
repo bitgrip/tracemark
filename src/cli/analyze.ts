@@ -6,7 +6,7 @@ import { generateReport, saveReport } from '../reporter/index.js';
 
 function parseArgs(argv: string[]): { config: string; urls: string } {
   let config = 'config.yaml';
-  let urls = 'urls/example.yaml';
+  let urls = 'urls/urls.yaml';
   for (let i = 2; i < argv.length; i++) {
     if (argv[i] === '--config' && argv[i + 1]) {
       config = argv[++i];

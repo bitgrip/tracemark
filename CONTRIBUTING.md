@@ -20,7 +20,7 @@ npx playwright install chromium
 1. Edit source files in `src/`
 2. Run type checking: `pnpm run typecheck`
 3. Run linting: `pnpm run lint`
-4. Test with a real URL list: `pnpm run analyze -- --urls urls/example.yaml`
+4. Test with a real URL list: create `urls/my-urls.yaml` (see `urls/README.md`) and run `pnpm run analyze -- --urls urls/my-urls.yaml`
 5. Verify HTML output: `pnpm run visualize -- --reports reports/<domain>/<timestamp>/report.json`
 
 ## Architecture

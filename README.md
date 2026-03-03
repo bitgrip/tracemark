@@ -15,8 +15,8 @@ A Playwright-based CLI tool that automatically collects performance and bundle m
 pnpm install
 npx playwright install chromium
 
-# Run analysis (uses config.yaml + urls/example.yaml by default)
-pnpm run analyze
+# Create your URL list (see urls/README.md for format), then run:
+pnpm run analyze -- --urls urls/my-urls.yaml
 
 # Generate HTML report from JSON output
 pnpm run visualize -- --reports reports/example-site/2026-01-01T12-00-00/report.json
@@ -39,7 +39,7 @@ pnpm run visualize -- --reports reports/example-site/2026-01-01T12-00-00/report.
 | Flag | Default | Description |
 |---|---|---|
 | `--config` | `config.yaml` | Path to YAML config file |
-| `--urls` | `urls/example.yaml` | Path to YAML URL list |
+| `--urls` | `urls/urls.yaml` | Path to YAML URL list |
 
 ### visualize
 
