@@ -189,9 +189,19 @@ export async function runScenario(url: string, scenario: Scenario, config: Confi
       const warmRequests: Request[] = [];
       warmPage.on('request', (req) => warmRequests.push(req));
 
+      await warmPage.coverage.startJSCoverage();
+      await warmPage.coverage.startCSSCoverage();
       await warmPage.goto(url, { waitUntil: 'networkidle', timeout: config.timeout });
 
-      const metrics = await analyzePageMetrics(warmPage, warmRequests, url, [], []);
+      const warmJsCoverageRaw = await warmPage.coverage.stopJSCoverage();
+      const warmCssCoverage = await warmPage.coverage.stopCSSCoverage();
+      const warmJsCoverage = convertJsCoverage(warmJsCoverageRaw as unknown as V8CoverageEntry[]);
+
+      const metrics = await analyzePageMetrics(
+        warmPage, warmRequests, url,
+        warmJsCoverage as Parameters<typeof analyzePageMetrics>[3],
+        warmCssCoverage as Parameters<typeof analyzePageMetrics>[4],
+      );
       warmRuns.push(metrics);
       await warmPage.close();
     }
