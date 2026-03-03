@@ -1,5 +1,8 @@
 node_modules/
 dist/
-reports/**/report.json
-reports/**/report.html
+reports/**/*.*
+!reports/README.md
 *.tsbuildinfo
+urls/*
+!urls/README.md
+!urls/example.yaml
