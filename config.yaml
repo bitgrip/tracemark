@@ -1,0 +1,44 @@
+warmRuns: 3
+waitBetweenRuns: 2000
+timeout: 30000
+headless: true
+scenarios:
+  - full
+  - no-third-party
+  - no-tracking-only
+lighthouse:
+  enabled: true
+  flags:
+    - "--chrome-flags=--headless"
+blocklists:
+  thirdParty:
+    - "*.doubleclick.net"
+    - "*.google-analytics.com"
+    - "*.googletagmanager.com"
+    - "*.facebook.net"
+    - "*.facebook.com"
+    - "*.hotjar.com"
+    - "*.segment.com"
+    - "*.tiktok.com"
+    - "*.twitter.com"
+    - "*.intercom.io"
+    - "*.zendesk.com"
+    - "*.crisp.chat"
+    - "*.stripe.com"
+    - "*.paypal.com"
+  trackingOnly:
+    - "*.google-analytics.com"
+    - "*.googletagmanager.com"
+    - "*.facebook.net"
+    - "*.hotjar.com"
+    - "*.segment.com"
+    - "*.tiktok.com"
+    - "*.twitter.com"
+    - "connect.facebook.net"
+    - "*.doubleclick.net"
+    - "*.abtasty.com"
+    - "*.optimizely.com"
+    - "*.vwo.com"
+    - "*.etracker.com"
+    - "*.matomo.cloud"
+    - "*.piano.io"
