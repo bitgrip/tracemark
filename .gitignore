@@ -1,6 +1,9 @@
 node_modules/
 dist/
-reports/**/report.json
-reports/**/report.html
+reports/**/*.*
+!reports/README.md
 *.tsbuildinfo
 package-lock.json
+urls/*
+!urls/README.md
+!urls/example.yaml
