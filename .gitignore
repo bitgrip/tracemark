@@ -1,0 +1,5 @@
+node_modules/
+dist/
+reports/**/report.json
+reports/**/report.html
+*.tsbuildinfo

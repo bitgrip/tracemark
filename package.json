@@ -1,0 +1,25 @@
+{
+  "name": "tracemark",
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "analyze": "tsx src/cli/analyze.ts",
+    "visualize": "tsx src/cli/visualize.ts",
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint src/"
+  },
+  "dependencies": {
+    "js-yaml": "^4.1.0",
+    "lighthouse": "^12.6.0",
+    "playwright": "^1.52.0"
+  },
+  "devDependencies": {
+    "@types/js-yaml": "^4.0.9",
+    "@types/node": "^22.15.18",
+    "@typescript-eslint/eslint-plugin": "^8.32.1",
+    "@typescript-eslint/parser": "^8.32.1",
+    "eslint": "^9.27.0",
+    "tsx": "^4.19.4",
+    "typescript": "^5.8.3"
+  }
+}
