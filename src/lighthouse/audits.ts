@@ -1,6 +1,17 @@
-import type { LighthouseAudit } from '../types/index.js';
+export const LIGHTHOUSE_AUDITS = [
+  'first-contentful-paint',
+  'largest-contentful-paint',
+  'total-blocking-time',
+  'cumulative-layout-shift',
+  'interactive',
+  'server-response-time',
+  'total-byte-weight',
+  'unused-javascript',
+  'unused-css-rules',
+  'render-blocking-resources',
+  'bootup-time',
+  'mainthread-work-breakdown',
+  'uses-optimized-images',
+] as const;
 
-// Implementation coming in Phase 3
-export function extractAudits(): Record<string, LighthouseAudit> {
-  throw new Error('Not implemented');
-}
+export type LighthouseAuditId = typeof LIGHTHOUSE_AUDITS[number];
