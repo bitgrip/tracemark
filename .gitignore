@@ -1,5 +1,8 @@
 node_modules/
 dist/
+package-lock.json
+reports/**/report.json
+reports/**/report.html
 reports/**/*.*
 !reports/README.md
 *.tsbuildinfo
