@@ -3,3 +3,4 @@ dist/
 reports/**/report.json
 reports/**/report.html
 *.tsbuildinfo
+package-lock.json
