@@ -1,91 +1,8 @@
-### 7f. Project Documentation
-
-| File | Content |
-|---|---|
-| `README.md` | Project overview, purpose, quickstart, scripts |
-| `CONTRIBUTING.md` | Setup, development environment, architecture decisions |
-| `AGENTS.md` | For AI agents: repo structure, purpose of each folder, module interactions |
-| `src/*/README.md` | Purpose of each module, input/output, dependencies on other modules |
-| `urls/README.md` | YAML file format, examples |
-| `reports/README.md` | Structure of generated reports, note on .gitignore |### 2d. Run Matrix Overview### Display
-
-#### Overview & Scores
-
-| View | Chart type | Rationale |
-|---|---|---|
-| Overview dashboard | **Metric Cards** | Compact KPIs: performance score, JS total, CSS total, LCP |
-| Lighthouse performance score | **Gauge** | Classic for scores 0–100, immediately readable |
-| All URLs tabular | **Sortable table** | No chart – a table is superior here |
-
-#### Lighthouse – Web Vitals
-
-| Metric | Chart type | Rationale |
-|---|---|---|
-| FCP, LCP, TTI, TBT, TTFB | **Grouped bar** | Direct side-by-side comparison across domains |
-| CLS | **Grouped bar** | Same as other vitals, axis adapted for small values |
-| Cold vs. warm (all vitals) | **Grouped bar** (2 groups per domain) | Cold/warm as group, domains as colors |
-
-#### HTML Payload
-
-| Metric | Chart type | Rationale |
-|---|---|---|
-| Transfer size compressed vs. uncompressed | **Grouped bar** | Two bars per domain |
-| SSR vs. CSR indicator | **Badge / label** | No chart – a text label suffices |
-| Inline script size & count | **Grouped bar** | Size + count as separate series |
-| Preload / prefetch hints | **Grouped bar** | Count split by resource type |
-
-#### JavaScript – Bundles
-
-| Metric | Chart type | Rationale |
-|---|---|---|
-| Total JS size | **Bar** | Simple direct comparison |
-| Unused JS share | **Donut** per domain | Used/unused ratio intuitively readable |
-| Bundle breakdown (framework / vendor / internal / external) | **Stacked bar** | Ideal for composition comparison |
-| Lazy-loaded chunks vs. initial | **Stacked bar** | Initial vs. lazy as two segments |
-| Chunk count / median & max size | **Grouped bar** | Three series: count, median, max |
-| Individual bundles (drilldown) | **Horizontal bar** | Sortable, name + size + classification |
-
-#### CSS – Frameworks & Sizes
-
-| Metric | Chart type | Rationale |
-|---|---|---|
-| Total CSS size | **Bar** | Direct comparison |
-| Unused CSS share | **Donut** per domain | Same as unused JS |
-| Inline `<style>` size & count | **Grouped bar** | Size + count as separate series |
-| CSS framework hints (confidence) | **Horizontal bar** (0–100%) | Confidence value per detected framework |
-
-#### Interactivity
-
-- **URL drilldown**: clicking a URL shows a detail view with all individual bundle data and CSS framework hints
-- **Domain tabs**: switch between domains and aggregate comparison
-- **Cold vs. warm toggle**: switch the view for all time-based metrics
-This results in the following runs per URL:
-
-| | `full` | `no-third-party` | `no-tracking-only` |
-|---|---|---|---|
-| Playwright Cold | ✅ | ✅ | ✅ |
-| Playwright Warm (3x, averaged) | ✅ | ✅ | ✅ |
-| Lighthouse Cold | ✅ | ✅ | ✅ |
-| Lighthouse Warm | ✅ | ✅ | ✅ |### 7b. pnpm Kommandos### 2a. Scenarios
-
-Three scenarios are run per URL, differing in how external requests are blocked:
-
-| Scenario | Description |
-|---|---|
-| `full` | Everything unfiltered – real user experience |
-| `no-third-party` | All external domains blocked via `page.route()` – shows the total third-party impact |
-| `no-tracking-only` | Only tracking & pixels blocked, CMP and CDN libraries remain active |
-
-- The delta `full` → `no-third-party` shows the **total third-party overhead**
-- The delta `full` → `no-tracking-only` isolates the **pure tracking impact**
-- `analyze` – Analyse starten, wahlweise mit explizitem Config- und URL-Dateipfad
-- `visualize` – HTML-Report generieren, ein oder mehrere JSON-Reports als Eingabe
-- `typecheck` – TypeScript Typprüfung ohne Build
-- `lint` – Linting# Tracemark
+# Tracemark
 
 ## User Story: Playwright Performance Analysis Setup
 
-**Date:** March 3, 2026
+**Date:** March 3, 2026  
 **Status:** Draft
 
 ---
@@ -125,18 +42,18 @@ Three scenarios are run per URL, differing in how external requests are blocked:
 
 > Each URL is measured in **three scenarios**. Each scenario runs the same sequence of cold and warm runs. Lighthouse also runs per scenario. The results of all three scenarios are merged in the JSON report and can be directly compared.
 
-### 2a. Szenarien
+### 2a. Scenarios
 
-Pro URL werden drei Szenarien durchlaufen, die sich in der Blockierung externer Requests unterscheiden:
+Three scenarios are run per URL, differing in how external requests are blocked:
 
-| Szenario | Beschreibung |
+| Scenario | Description |
 |---|---|
-| `full` | Alles ungefiltert – reale Nutzererfahrung |
-| `no-third-party` | Alle externen Domains geblockt via `page.route()` – zeigt den gesamten Third-Party-Impact |
-| `no-tracking-only` | Nur Tracking & Pixel geblockt, CMP und CDN-Libraries bleiben aktiv |
+| `full` | Everything unfiltered – real user experience |
+| `no-third-party` | All external domains blocked via `page.route()` – shows the total third-party impact |
+| `no-tracking-only` | Only tracking & pixels blocked, CMP and CDN libraries remain active |
 
-- Die Differenz `full` → `no-third-party` zeigt den **gesamten Third-Party-Overhead**
-- Die Differenz `full` → `no-tracking-only` isoliert den **reinen Tracking-Impact**
+- The delta `full` → `no-third-party` shows the **total third-party overhead**
+- The delta `full` → `no-tracking-only` isolates the **pure tracking impact**
 
 ### 2b. Runs per Scenario
 
@@ -153,14 +70,14 @@ Within each scenario, the following run sequence is executed per URL:
 - Blocking external requests for Lighthouse is implemented via Lighthouse's own request-blocking flags (`--blocked-url-patterns`)
 - Lighthouse results are stored per scenario in the JSON report and assigned to the corresponding Playwright measurement
 
-### 2d. Gesamtübersicht Messläufe
+### 2d. Run Matrix Overview
 
-Pro URL ergeben sich damit folgende Messläufe:
+This results in the following runs per URL:
 
 | | `full` | `no-third-party` | `no-tracking-only` |
 |---|---|---|---|
 | Playwright Cold | ✅ | ✅ | ✅ |
-| Playwright Warm (3x, gemittelt) | ✅ | ✅ | ✅ |
+| Playwright Warm (3x, averaged) | ✅ | ✅ | ✅ |
 | Lighthouse Cold | ✅ | ✅ | ✅ |
 | Lighthouse Warm | ✅ | ✅ | ✅ |
 
@@ -509,60 +426,58 @@ Pro URL ergeben sich damit folgende Messläufe:
 - **2 to 3 domains** can be compared simultaneously
 - The visualization runs in the browser without a build step
 
-### Darstellung
+### Display
 
-#### Übersicht & Scores
+#### Overview & Scores
 
-| Ansicht | Chart-Typ | Begründung |
+| View | Chart type | Rationale |
 |---|---|---|
-| Übersichts-Dashboard | **Metric Cards** | Kompakte KPIs: Performance Score, JS total, CSS total, LCP |
-| Lighthouse Performance Score | **Gauge** | Klassisch für Scores 0–100, sofort lesbar |
-| Alle URLs tabellarisch | **Sortierbare Tabelle** | Kein Chart – Tabelle ist hier überlegen |
+| Overview dashboard | **Metric Cards** | Compact KPIs: performance score, JS total, CSS total, LCP |
+| Lighthouse performance score | **Gauge** | Classic for scores 0–100, immediately readable |
+| All URLs tabular | **Sortable table** | No chart – a table is superior here |
 
 #### Lighthouse – Web Vitals
 
-| Metrik | Chart-Typ | Begründung |
+| Metric | Chart type | Rationale |
 |---|---|---|
-| FCP, LCP, TTI, TBT, TTFB | **Grouped Bar** | Direkter Vergleich mehrerer Domains nebeneinander |
-| CLS | **Grouped Bar** | Analog zu den anderen Vitals, Achse an kleine Werte angepasst |
-| Cold vs. Warm (alle Vitals) | **Grouped Bar** (2 Gruppen pro Domain) | Cold/Warm als Gruppe, Domains als Farben |
+| FCP, LCP, TTI, TBT, TTFB | **Grouped bar** | Direct side-by-side comparison across domains |
+| CLS | **Grouped bar** | Same as other vitals, axis adapted for small values |
+| Cold vs. warm (all vitals) | **Grouped bar** (2 groups per domain) | Cold/warm as group, domains as colors |
 
 #### HTML Payload
 
-| Metrik | Chart-Typ | Begründung |
+| Metric | Chart type | Rationale |
 |---|---|---|
-| Transfer-Size komprimiert vs. unkomprimiert | **Grouped Bar** | Zwei Balken pro Domain |
-| SSR vs. CSR Indikator | **Badge / Label** | Kein Chart – Textlabel reicht |
-| Inline Script Größe & Anzahl | **Grouped Bar** | Größe + Anzahl als separate Serien |
-| Preload / Prefetch Hints | **Grouped Bar** | Anzahl nach Ressourcentyp aufgeteilt |
+| Transfer size compressed vs. uncompressed | **Grouped bar** | Two bars per domain |
+| SSR vs. CSR indicator | **Badge / label** | No chart – a text label suffices |
+| Inline script size & count | **Grouped bar** | Size + count as separate series |
+| Preload / prefetch hints | **Grouped bar** | Count split by resource type |
 
 #### JavaScript – Bundles
 
-| Metrik | Chart-Typ | Begründung |
+| Metric | Chart type | Rationale |
 |---|---|---|
-| JS Gesamtgröße | **Bar** | Einfacher Direktvergleich |
-| Unused JS Anteil | **Donut** pro Domain | Used/Unused Verhältnis intuitiv lesbar |
-| Bundle-Gliederung (framework / vendor / internal / external) | **Stacked Bar** | Ideal für Zusammensetzung im Vergleich |
-| Lazy-geladene Chunks vs. initial | **Stacked Bar** | Initial vs. lazy als zwei Segmente |
-| Chunk-Anzahl / Median- & Max-Größe | **Grouped Bar** | Drei Serien: count, median, max |
-| Einzelne Bundles (Drilldown) | **Horizontal Bar** | Sortierbar, Name + Größe + Klassifizierung |
+| Total JS size | **Bar** | Simple direct comparison |
+| Unused JS share | **Donut** per domain | Used/unused ratio intuitively readable |
+| Bundle breakdown (framework / vendor / internal / external) | **Stacked bar** | Ideal for composition comparison |
+| Lazy-loaded chunks vs. initial | **Stacked bar** | Initial vs. lazy as two segments |
+| Chunk count / median & max size | **Grouped bar** | Three series: count, median, max |
+| Individual bundles (drilldown) | **Horizontal bar** | Sortable, name + size + classification |
 
-#### CSS – Frameworks & Größen
+#### CSS – Frameworks & Sizes
 
-| Metrik | Chart-Typ | Begründung |
+| Metric | Chart type | Rationale |
 |---|---|---|
-| CSS Gesamtgröße | **Bar** | Direkter Vergleich |
-| Unused CSS Anteil | **Donut** pro Domain | Analog zu Unused JS |
-| Inline `<style>` Größe & Anzahl | **Grouped Bar** | Größe + Anzahl als separate Serien |
-| CSS Framework Hints (Konfidenz) | **Horizontal Bar** (0–100%) | Konfidenz-Wert pro erkanntem Framework |
+| Total CSS size | **Bar** | Direct comparison |
+| Unused CSS share | **Donut** per domain | Same as unused JS |
+| Inline `<style>` size & count | **Grouped bar** | Size + count as separate series |
+| CSS framework hints (confidence) | **Horizontal bar** (0–100%) | Confidence value per detected framework |
 
-#### Interaktivität
+#### Interactivity
 
-- **URL-Drilldown**: Klick auf eine URL zeigt Detailansicht mit allen Bundle-Einzeldaten und CSS-Framework-Hints
-- **Domain-Tabs**: Umschalten zwischen Domains und Gesamtvergleich
-- **Cold vs. Warm Toggle**: Umschalten der Ansicht für alle Zeitmetriken
-
----
+- **URL drilldown**: clicking a URL shows a detail view with all individual bundle data and CSS framework hints
+- **Domain tabs**: switch between domains and aggregate comparison
+- **Cold vs. warm toggle**: switch the view for all time-based metrics
 
 ---
 
@@ -592,60 +507,60 @@ Pro URL ergeben sich damit folgende Messläufe:
   - The JSON report is loaded at runtime via `fetch()` or embedded inline directly
   - No build step, no runtime framework (no Next.js, no Vite, no React)
 
-### 7b. pnpm Kommandos
+### 7b. pnpm Commands
 
-| Kommando | Beschreibung |
+| Command | Description |
 |---|---|
-| `pnpm install` | Abhängigkeiten installieren |
-| `pnpm run analyze` | Analyse starten (Standard-Config + Standard-URL-Liste) |
-| `pnpm run analyze --config config.yaml --urls urls/example.yaml` | Analyse mit expliziten Dateipfaden starten |
-| `pnpm run visualize --reports reports/shop-a/2026-03-03T14-00-00/report.json` | HTML-Report für einen Run generieren |
-| `pnpm run visualize --reports reports/shop-a/.../report.json reports/shop-b/.../report.json` | Vergleichs-Report für mehrere Domains generieren |
-| `pnpm run typecheck` | TypeScript Typprüfung ohne Build |
+| `pnpm install` | Install dependencies |
+| `pnpm run analyze` | Start analysis (default config + default URL list) |
+| `pnpm run analyze --config config.yaml --urls urls/example.yaml` | Start analysis with explicit file paths |
+| `pnpm run visualize --reports reports/shop-a/2026-03-03T14-00-00/report.json` | Generate HTML report for a single run |
+| `pnpm run visualize --reports reports/shop-a/.../report.json reports/shop-b/.../report.json` | Generate comparison report for multiple domains |
+| `pnpm run typecheck` | TypeScript type check without build |
 | `pnpm run lint` | Linting |
 
-### 7c. Ordnerstruktur
+### 7c. Folder Structure
 
 ```
-├── urls/                        # YAML-Dateien mit URL-Listen
+├── urls/                        # YAML files with URL lists
 │   ├── README.md
 │   └── example.yaml
-├── reports/                     # Generierte Reports (nicht ins Git)
+├── reports/                     # Generated reports (not in git)
 │   ├── README.md
-│   └── <domain-slug>/           # Ein Ordner pro Domain
-│       └── <timestamp>/         # Ein Unterordner pro Test-Run (ISO 8601)
+│   └── <domain-slug>/           # One folder per domain
+│       └── <timestamp>/         # One subfolder per test run (ISO 8601)
 │           ├── report.json
 │           └── report.html
 ├── src/
 │   ├── README.md
-│   ├── analyzer/                # Playwright-Messlogik
+│   ├── analyzer/                # Playwright measurement logic
 │   │   ├── README.md
 │   │   ├── index.ts
 │   │   ├── html.ts
 │   │   ├── javascript.ts
 │   │   ├── css.ts
 │   │   └── thirdParty.ts
-│   ├── lighthouse/              # Lighthouse-Integration
+│   ├── lighthouse/              # Lighthouse integration
 │   │   ├── README.md
 │   │   ├── index.ts
 │   │   └── audits.ts
-│   ├── scenarios/               # Szenario-Steuerung
+│   ├── scenarios/               # Scenario control
 │   │   ├── README.md
 │   │   └── index.ts
-│   ├── reporter/                # JSON-Report-Erstellung & Merge
+│   ├── reporter/                # JSON report creation & merge
 │   │   ├── README.md
 │   │   └── index.ts
-│   ├── visualizer/              # HTML-Visualisierung
+│   ├── visualizer/              # HTML visualization
 │   │   ├── README.md
 │   │   └── index.ts
-│   ├── classifier/              # Bundle- & Third-Party-Klassifizierung
+│   ├── classifier/              # Bundle & third-party classification
 │   │   ├── README.md
 │   │   ├── bundles.ts
 │   │   └── thirdParty.ts
-│   └── types/                   # Gemeinsame TypeScript-Typen
+│   └── types/                   # Shared TypeScript types
 │       ├── README.md
 │       └── index.ts
-├── config.yaml                  # Globale Konfiguration
+├── config.yaml                  # Global configuration
 ├── AGENTS.md
 ├── CONTRIBUTING.md
 ├── README.md
@@ -697,16 +612,16 @@ reports/
 - JSON and HTML always alongside each other in the same run folder
 - `reports/` is excluded via `.gitignore`
 
-### 7f. Projekt-Dokumentation
+### 7f. Project Documentation
 
-| Datei | Inhalt |
+| File | Content |
 |---|---|
-| `README.md` | Projektübersicht, Zweck, Quickstart, Kommandos (EN) |
-| `CONTRIBUTING.md` | Setup, Entwicklungsumgebung, Architekturentscheidungen (EN) |
-| `AGENTS.md` | Für KI-Agenten: Repo-Struktur, Zweck jedes Ordners, Zusammenspiel der Module (EN) |
-| `src/*/README.md` | Purpose des jeweiligen Moduls, Input/Output, Abhängigkeiten zu anderen Modulen (EN) |
-| `urls/README.md` | Format der YAML-Dateien, Beispiele (EN) |
-| `reports/README.md` | Struktur der generierten Reports, Hinweis auf .gitignore (EN) |
+| `README.md` | Project overview, purpose, quickstart, scripts |
+| `CONTRIBUTING.md` | Setup, development environment, architecture decisions |
+| `AGENTS.md` | For AI agents: repo structure, purpose of each folder, module interactions |
+| `src/*/README.md` | Purpose of each module, input/output, dependencies on other modules |
+| `urls/README.md` | YAML file format, examples |
+| `reports/README.md` | Structure of generated reports, note on .gitignore |
 
 ---
 
