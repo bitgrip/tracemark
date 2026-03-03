@@ -5,6 +5,7 @@
   "scripts": {
     "analyze": "tsx src/cli/analyze.ts",
     "visualize": "tsx src/cli/visualize.ts",
+    "all": "tsx src/cli/all.ts",
     "typecheck": "tsc --noEmit",
     "lint": "eslint src/"
   },
