@@ -2,19 +2,39 @@ import * as fs from 'fs/promises';
 import * as yaml from 'js-yaml';
 import type { Config, DomainInput, DomainResult, URLResult } from '../types/index.js';
 import { runURL } from '../scenarios/index.js';
+import { runHttpTiming } from '../http-timing/index.js';
 import { generateReport, saveReport } from '../reporter/index.js';
+import { Protocol } from '../protocol/index.js';
 
-function parseArgs(argv: string[]): { config: string; urls: string } {
+function parseArgs(argv: string[]): { config: string; urls: string; skipLighthouse: boolean; skipHttpTiming: boolean; skipPlaywright: boolean } {
   let config = 'config.yaml';
   let urls = 'urls/urls.yaml';
+  let skipLighthouse = false;
+  let skipHttpTiming = false;
+  let skipPlaywright = false;
   for (let i = 2; i < argv.length; i++) {
     if (argv[i] === '--config' && argv[i + 1]) {
       config = argv[++i];
     } else if (argv[i] === '--urls' && argv[i + 1]) {
       urls = argv[++i];
+    } else if (argv[i] === '--skip-lighthouse') {
+      skipLighthouse = true;
+    } else if (argv[i] === '--skip-http-timing') {
+      skipHttpTiming = true;
+    } else if (argv[i] === '--skip-playwright') {
+      skipPlaywright = true;
+    } else if (argv[i] === '--only-http-timing') {
+      skipLighthouse = true;
+      skipPlaywright = true;
+    } else if (argv[i] === '--only-lighthouse') {
+      skipHttpTiming = true;
+      skipPlaywright = true;
+    } else if (argv[i] === '--only-playwright') {
+      skipLighthouse = true;
+      skipHttpTiming = true;
     }
   }
-  return { config, urls };
+  return { config, urls, skipLighthouse, skipHttpTiming, skipPlaywright };
 }
 
 async function loadYamlFile<T>(filePath: string, label: string): Promise<T> {
@@ -60,8 +80,23 @@ async function main(): Promise<void> {
   const config = await loadYamlFile<Config>(args.config, 'Config');
   const domainInputs = await loadYamlFile<DomainInput[]>(args.urls, 'URLs');
 
+  // Apply CLI overrides
+  if (args.skipLighthouse) {
+    config.lighthouse.enabled = false;
+  }
+  if (args.skipHttpTiming) {
+    if (config.httpTiming) config.httpTiming.enabled = false;
+  }
+
+  // Initialize protocol logger
+  const protocol = new Protocol();
+  protocol.header();
+  protocol.config(config);
+
   console.log(`Scenarios: ${config.scenarios.join(', ')}`);
   console.log(`Warm runs: ${config.warmRuns}`);
+  console.log(`Lighthouse: ${config.lighthouse.enabled ? 'enabled' : 'disabled'}`);
+  console.log(`HTTP-Timing: ${config.httpTiming?.enabled ? 'enabled' : 'disabled'}`);
   console.log('');
 
   // Validate URL inputs
@@ -80,6 +115,7 @@ async function main(): Promise<void> {
   for (let di = 0; di < totalDomains; di++) {
     const domainInput = domainInputs[di];
     console.log(`📊 Analyzing ${domainInput.name} (${di + 1}/${totalDomains})`);
+    protocol.domainStart(domainInput.name, di + 1, totalDomains);
 
     const urlResults: URLResult[] = [];
     const domainUrlCount = domainInput.urls.length;
@@ -100,12 +136,40 @@ async function main(): Promise<void> {
       }
 
       console.log(`  → ${url} (${ui + 1}/${domainUrlCount})`);
+      protocol.urlStart(url, ui + 1, domainUrlCount);
 
       try {
-        const urlResult = await runURL(url, config);
+        let urlResult: URLResult;
+
+        if (args.skipPlaywright) {
+          // Skip Playwright/Lighthouse scenarios entirely, only run HTTP-Timing
+          protocol.skip('PLAYWRIGHT', 'disabled via CLI');
+          protocol.skip('LIGHTHOUSE', 'disabled via CLI');
+          urlResult = {
+            url,
+            status: 'ok',
+            scenarios: {} as URLResult['scenarios'],
+            deltas: { full_vs_noThirdParty: {}, full_vs_noTrackingOnly: {} },
+          };
+          if (config.httpTiming?.enabled) {
+            protocol.httpTimingStart(url, config.httpTiming.runs);
+            try {
+              urlResult.httpTiming = await runHttpTiming(url, config.httpTiming);
+              protocol.httpTimingResult(urlResult.httpTiming);
+            } catch (err) {
+              const msg = err instanceof Error ? err.message : String(err);
+              protocol.error('HTTP-TIMING', msg);
+              console.error(`  ❌ HTTP-Timing error for ${url}: ${msg}`);
+            }
+          }
+        } else {
+          urlResult = await runURL(url, config, protocol);
+        }
+
         urlResults.push(urlResult);
       } catch (err) {
         const message = err instanceof Error ? err.message : String(err);
+        protocol.error('FATAL', message);
         console.error(`  ❌ Error analyzing ${url}: ${message}`);
         urlResults.push({
           url,
@@ -115,8 +179,11 @@ async function main(): Promise<void> {
           deltas: { full_vs_noThirdParty: {}, full_vs_noTrackingOnly: {} },
         });
       }
+
+      protocol.urlEnd();
     }
 
+    protocol.domainEnd();
     domainResults.push({ name: domainInput.name, urls: urlResults });
   }
 
@@ -124,6 +191,15 @@ async function main(): Promise<void> {
   const savedPaths = await saveReport(report);
 
   const elapsed = Date.now() - startTime;
+  protocol.footer(elapsed, domainResults.length, totalUrls);
+
+  // Save protocol alongside the first report
+  if (savedPaths.length > 0) {
+    const reportDir = savedPaths[0].replace(/\/report\.json$/, '');
+    const protocolPath = await protocol.save(reportDir);
+    console.log(`  Protocol: ${protocolPath}`);
+  }
+
   console.log('');
   console.log('✅ Analysis complete!');
   console.log(`  Domains: ${domainResults.length}`);

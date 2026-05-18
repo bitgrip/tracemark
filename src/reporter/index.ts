@@ -11,6 +11,7 @@ export function generateReport(domains: DomainResult[], config: Config): Report 
         warmRuns: config.warmRuns,
         waitBetweenRuns: config.waitBetweenRuns,
         scenarios: config.scenarios,
+        ...(config.network ? { network: config.network } : {}),
       },
     },
     domains,

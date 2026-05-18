@@ -4,6 +4,7 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import type { Config, Scenario, LighthouseScenarioResult, LighthouseResult, LighthouseAudit } from '../types/index.js';
 import { LIGHTHOUSE_AUDITS } from './audits.js';
+import { THROTTLE_PROFILES } from '../scenarios/index.js';
 
 const execFileAsync = promisify(execFile);
 
@@ -82,6 +83,18 @@ async function runLighthouseCLI(url: string, blockedPatterns: string[], flags: s
 export async function runLighthouse(url: string, scenario: Scenario, config: Config): Promise<LighthouseScenarioResult> {
   const blockedPatterns = getBlockedPatterns(scenario, config);
   const extraFlags = config.lighthouse.flags.filter(f => !f.startsWith('--chrome-flags'));
+
+  if (config.network?.throttle) {
+    const profile = THROTTLE_PROFILES[config.network.profile];
+    const throughputKbps = Math.round(profile.downloadThroughput * 8 / 1000);
+    extraFlags.push(
+      '--throttling-method=devtools',
+      `--throttling.throughputKbps=${throughputKbps}`,
+      `--throttling.rttMs=${profile.latency}`,
+      `--throttling.downloadThroughputKbps=${throughputKbps}`,
+      `--throttling.uploadThroughputKbps=${Math.round(profile.uploadThroughput * 8 / 1000)}`,
+    );
+  }
 
   console.log(`  [Lighthouse] ${scenario} cold run...`);
   const cold = await runLighthouseCLI(url, blockedPatterns, extraFlags);

@@ -9,6 +9,7 @@
 | `analyzer/` | Collects page metrics via Playwright | `analyzePageMetrics()` |
 | `classifier/` | URL pattern matching for bundles & third-party | `classifyBundle()`, `classifyThirdParty()` |
 | `lighthouse/` | Runs Lighthouse audits | `runLighthouse()` |
+| `http-timing/` | HTTP-level response timing (Node-native) | `runHttpTiming()` |
 | `reporter/` | JSON report generation & file I/O | `generateReport()`, `saveReport()`, `loadReport()` |
 | `visualizer/` | HTML report generation | `generateHTML()` |
 | `types/` | Shared TypeScript interfaces | `Report`, `RunMetrics`, `Config`, etc. |
@@ -18,6 +19,7 @@
 ```
 cli/analyze    → scenarios → analyzer → classifier
                            → lighthouse
+                           → http-timing
                → reporter
 
 cli/visualize  → reporter (loadReport)

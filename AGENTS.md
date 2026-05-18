@@ -10,6 +10,7 @@ tracemark/
 │   ├── analyzer/       # Page metric collection (html, js, css, third-party)
 │   ├── classifier/     # URL pattern matching (bundle types, third-party providers)
 │   ├── lighthouse/     # Independent Lighthouse audits
+│   ├── http-timing/    # HTTP-level response timing (TTFB, percentiles)
 │   ├── reporter/       # JSON report generation and file I/O
 │   ├── visualizer/     # HTML report generation (ECharts + Alpine.js)
 │   └── types/          # Shared TypeScript interfaces
@@ -29,11 +30,11 @@ tracemark/
                            │
                     ┌──────▼───────┐
                     │  scenarios   │
-                    └──┬───────┬───┘
-                       │       │
-              ┌────────▼──┐  ┌─▼──────────┐
-              │  analyzer  │  │ lighthouse  │
-              └────┬───────┘  └────────────┘
+                    └──┬───┬───┬───┘
+                       │   │   │
+              ┌────────▼┐ ┌▼────────┐ ┌─▼──────────┐
+              │ analyzer │ │lighthouse│ │ http-timing │
+              └────┬─────┘ └─────────┘ └────────────┘
                    │
               ┌────▼───────┐
               │ classifier  │

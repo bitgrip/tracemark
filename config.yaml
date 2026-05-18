@@ -6,10 +6,17 @@ scenarios:
   - full
   - no-third-party
   - no-tracking-only
+network:
+  throttle: true
+  profile: "cable-10"
 lighthouse:
   enabled: true
   flags:
     - "--chrome-flags=--headless"
+httpTiming:
+  enabled: true
+  runs: 20
+  waitBetweenRuns: 500
 blocklists:
   thirdParty:
     - "*.doubleclick.net"
@@ -21,11 +28,18 @@ blocklists:
     - "*.segment.com"
     - "*.tiktok.com"
     - "*.twitter.com"
+    - "*.x.com"
     - "*.intercom.io"
     - "*.zendesk.com"
     - "*.crisp.chat"
     - "*.stripe.com"
     - "*.paypal.com"
+    - "*.youtube.com"
+    - "*.instagram.com"
+    - "*.linkedin.com"
+    - "*.usercentrics.eu"
+    - "*.frcapi.com"
+    - "stats.unicef.de"
   trackingOnly:
     - "*.google-analytics.com"
     - "*.googletagmanager.com"
@@ -34,6 +48,7 @@ blocklists:
     - "*.segment.com"
     - "*.tiktok.com"
     - "*.twitter.com"
+    - "*.x.com"
     - "connect.facebook.net"
     - "*.doubleclick.net"
     - "*.abtasty.com"
@@ -42,3 +57,4 @@ blocklists:
     - "*.etracker.com"
     - "*.matomo.cloud"
     - "*.piano.io"
+    - "stats.unicef.de"

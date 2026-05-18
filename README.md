@@ -6,6 +6,7 @@ A Playwright-based CLI tool that automatically collects performance and bundle m
 
 - **Three scenarios** per URL: `full`, `no-third-party`, `no-tracking-only` — isolates third-party and tracking impact
 - **Lighthouse integration** — independent performance audits (Web Vitals, byte weight, unused code)
+- **HTTP-Timing** — server-response measurement (TTFB, download, total) with percentiles (p50/p95/p99)
 - **Bundle & CSS analysis** — JS chunk classification, unused code ratios, CSS framework detection
 - **Interactive HTML reports** — self-contained visualization with ECharts + Alpine.js
 
@@ -40,6 +41,12 @@ pnpm run visualize -- --reports reports/example-site/2026-01-01T12-00-00/report.
 |---|---|---|
 | `--config` | `config.yaml` | Path to YAML config file |
 | `--urls` | `urls/urls.yaml` | Path to YAML URL list |
+| `--skip-lighthouse` | — | Disable Lighthouse audits |
+| `--skip-http-timing` | — | Disable HTTP-Timing measurement |
+| `--skip-playwright` | — | Disable Playwright scenarios |
+| `--only-http-timing` | — | Run only HTTP-Timing (skips Playwright + Lighthouse) |
+| `--only-lighthouse` | — | Run only Lighthouse (skips Playwright + HTTP-Timing) |
+| `--only-playwright` | — | Run only Playwright (skips Lighthouse + HTTP-Timing) |
 
 ### visualize
 
@@ -56,12 +63,13 @@ src/
 ├── analyzer/     # Collects metrics via Playwright (HTML, JS, CSS, third-party)
 ├── classifier/   # Classifies bundles and third-party requests by URL patterns
 ├── lighthouse/   # Runs Lighthouse audits independently
+├── http-timing/  # HTTP-level response timing (TTFB, percentiles)
 ├── reporter/     # Generates and saves JSON reports
 ├── visualizer/   # Generates self-contained HTML reports
 └── types/        # Shared TypeScript type definitions
 ```
 
-Data flow: **YAML URLs → Scenarios → Playwright + Lighthouse → JSON Report → HTML Visualization**
+Data flow: **YAML URLs → Scenarios → Playwright + Lighthouse + HTTP-Timing → JSON Report → HTML Visualization**
 
 ## Further Reading
 

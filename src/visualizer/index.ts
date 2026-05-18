@@ -72,7 +72,7 @@ export function generateHTML(report: Report): string {
   <div class="header">
     <div>
       <h1>Tracemark Report</h1>
-      <div class="meta">${timestamp} &middot; v${esc(report.meta.version)} &middot; ${esc(String(report.meta.config.warmRuns))} warm runs &middot; Scenarios: ${esc(report.meta.config.scenarios.join(', '))}</div>
+      <div class="meta">${timestamp} &middot; v${esc(report.meta.version)} &middot; ${esc(String(report.meta.config.warmRuns))} warm runs &middot; Scenarios: ${esc(report.meta.config.scenarios.join(', '))}${report.meta.config.network?.throttle ? ` &middot; Throttle: ${esc(report.meta.config.network.profile)}` : ''}</div>
     </div>
     <div class="toggle-group">
       <button class="toggle-btn" :class="{ active: runType === 'cold' }" @click="setRunType('cold')">Cold</button>
@@ -270,6 +270,76 @@ export function generateHTML(report: Report): string {
       </div>
     </template>
 
+    <!-- ========== HTTP TIMING TAB ========== -->
+    <template x-if="activeTab === 'http-timing' && !selectedUrl">
+      <div>
+        <div class="section-title">HTTP-Timing (Server Response)</div>
+        <template x-if="!hasHttpTimingData()">
+          <div class="card"><p class="empty">No HTTP-Timing data available. Run analysis with httpTiming enabled.</p></div>
+        </template>
+        <template x-if="hasHttpTimingData()">
+          <div>
+            <div class="grid grid-4">
+              <template x-for="(mc, i) in getHttpTimingCards()" :key="i">
+                <div class="card metric-card">
+                  <div class="value" :style="{ color: mc.color || '#1f2937' }" x-text="mc.value"></div>
+                  <div class="label" x-text="mc.label"></div>
+                  <div class="domain-name" x-text="mc.domain"></div>
+                </div>
+              </template>
+            </div>
+            <div class="card">
+              <h3>TTFB Comparison (p50 / p95 / p99)</h3>
+              <div id="chart-http-ttfb" class="chart-container" style="min-height:380px;"></div>
+            </div>
+            <div class="card">
+              <h3>Total Response Time (p50 / p95 / p99)</h3>
+              <div id="chart-http-total" class="chart-container" style="min-height:380px;"></div>
+            </div>
+            <div class="card">
+              <h3>Response Size &amp; Download Time</h3>
+              <div id="chart-http-size-download" class="chart-container" style="min-height:320px;"></div>
+            </div>
+            <div class="card">
+              <h3>HTTP-Timing Details</h3>
+              <table>
+                <thead>
+                  <tr>
+                    <th>Domain</th>
+                    <th>URL</th>
+                    <th>TTFB p50</th>
+                    <th>TTFB p95</th>
+                    <th>Total p50</th>
+                    <th>Total p95</th>
+                    <th>Size</th>
+                    <th>Status</th>
+                    <th>Cache</th>
+                    <th>Server</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <template x-for="row in getHttpTimingRows()" :key="row.domain + row.url">
+                    <tr>
+                      <td x-text="row.domain"></td>
+                      <td style="max-width:300px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" x-text="row.url"></td>
+                      <td x-text="row.ttfbP50"></td>
+                      <td x-text="row.ttfbP95"></td>
+                      <td x-text="row.totalP50"></td>
+                      <td x-text="row.totalP95"></td>
+                      <td x-text="row.size"></td>
+                      <td><span class="badge" :class="row.statusCode === 200 ? 'badge-green' : 'badge-yellow'" x-text="row.statusCode"></span></td>
+                      <td><span class="badge badge-gray" x-text="row.cache"></span></td>
+                      <td x-text="row.server"></td>
+                    </tr>
+                  </template>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </template>
+      </div>
+    </template>
+
     <!-- ========== CSS TAB ========== -->
     <template x-if="activeTab === 'css' && !selectedUrl">
       <div>
@@ -315,6 +385,7 @@ export function generateHTML(report: Report): string {
         mainTabs: [
           { id: 'overview', label: 'Overview' },
           { id: 'lighthouse', label: 'Lighthouse' },
+          { id: 'http-timing', label: 'HTTP Timing' },
           { id: 'html', label: 'HTML Payload' },
           { id: 'javascript', label: 'JavaScript' },
           { id: 'css', label: 'CSS' }
@@ -496,6 +567,7 @@ export function generateHTML(report: Report): string {
           var self = this;
           if (self.selectedUrl) { self.renderDrilldown(); return; }
           if (self.activeTab === 'lighthouse') self.renderLighthouseCharts();
+          if (self.activeTab === 'http-timing') self.renderHttpTimingCharts();
           if (self.activeTab === 'html') self.renderHTMLCharts();
           if (self.activeTab === 'javascript') self.renderJSCharts();
           if (self.activeTab === 'css') self.renderCSSCharts();
@@ -720,6 +792,129 @@ export function generateHTML(report: Report): string {
               { name: 'Median Size', type: 'bar', yAxisIndex: 0, data: visible.map(function(d) { var u = self.getFirstOkUrl(d); var pw = self.getPW(u, self.runType); return pw && pw.javascript && pw.javascript.chunks ? pw.javascript.chunks.medianSize : 0; }) },
               { name: 'Max Size', type: 'bar', yAxisIndex: 0, data: visible.map(function(d) { var u = self.getFirstOkUrl(d); var pw = self.getPW(u, self.runType); return pw && pw.javascript && pw.javascript.chunks ? pw.javascript.chunks.maxSize : 0; }) },
               { name: 'Count', type: 'bar', yAxisIndex: 1, data: visible.map(function(d) { var u = self.getFirstOkUrl(d); var pw = self.getPW(u, self.runType); return pw && pw.javascript && pw.javascript.chunks ? pw.javascript.chunks.total : 0; }) }
+            ]
+          });
+        },
+
+        /* ---- HTTP-Timing Helpers & Charts ---- */
+        hasHttpTimingData() {
+          var self = this;
+          return self.domains.some(function(d) {
+            return d.urls.some(function(u) { return u.httpTiming; });
+          });
+        },
+
+        getHttpTimingCards() {
+          var self = this;
+          var cards = [];
+          self.getVisibleDomains().forEach(function(d) {
+            var u = self.getFirstOkUrl(d);
+            var ht = u && u.httpTiming ? u.httpTiming : null;
+            cards.push({ value: ht ? formatMs(ht.ttfb.p50) : '–', label: 'TTFB p50', domain: d.name, color: '#5470c6' });
+            cards.push({ value: ht ? formatMs(ht.total.p50) : '–', label: 'Total p50', domain: d.name, color: '#91cc75' });
+            cards.push({ value: ht ? formatBytes(ht.responseSize) : '–', label: 'Response Size', domain: d.name, color: '#fac858' });
+            cards.push({ value: ht ? (ht.cacheStatus || '–') : '–', label: 'Cache', domain: d.name, color: '#73c0de' });
+          });
+          return cards;
+        },
+
+        getHttpTimingRows() {
+          var self = this;
+          var rows = [];
+          self.getVisibleDomains().forEach(function(d) {
+            d.urls.forEach(function(u) {
+              var ht = u.httpTiming;
+              if (!ht) return;
+              rows.push({
+                domain: d.name,
+                url: ht.url,
+                ttfbP50: formatMs(ht.ttfb.p50),
+                ttfbP95: formatMs(ht.ttfb.p95),
+                totalP50: formatMs(ht.total.p50),
+                totalP95: formatMs(ht.total.p95),
+                size: formatBytes(ht.responseSize),
+                statusCode: ht.statusCode,
+                cache: ht.cacheStatus || '–',
+                server: ht.server || '–'
+              });
+            });
+          });
+          return rows;
+        },
+
+        renderHttpTimingCharts() {
+          var self = this;
+          var visible = self.getVisibleDomains();
+
+          // Collect all URLs with httpTiming data across visible domains
+          var urlLabels = [];
+          var ttfbP50 = [], ttfbP95 = [], ttfbP99 = [];
+          var totalP50 = [], totalP95 = [], totalP99 = [];
+          var downloadP50 = [], sizes = [];
+
+          visible.forEach(function(d) {
+            d.urls.forEach(function(u) {
+              var ht = u.httpTiming;
+              if (!ht) return;
+              var label = d.name + '\n' + (ht.url.length > 40 ? '...' + ht.url.slice(-37) : ht.url);
+              urlLabels.push(label);
+              ttfbP50.push(ht.ttfb.p50);
+              ttfbP95.push(ht.ttfb.p95);
+              ttfbP99.push(ht.ttfb.p99);
+              totalP50.push(ht.total.p50);
+              totalP95.push(ht.total.p95);
+              totalP99.push(ht.total.p99);
+              downloadP50.push(ht.download.p50);
+              sizes.push(ht.responseSize);
+            });
+          });
+
+          if (urlLabels.length === 0) return;
+
+          /* TTFB Chart */
+          self.renderChart('chart-http-ttfb', {
+            tooltip: { trigger: 'axis', axisPointer: { type: 'shadow' }, formatter: function(params) { var s = escHtml(params[0].axisValue).replace('\n', ' '); params.forEach(function(p) { s += '<br/>' + p.marker + ' ' + escHtml(p.seriesName) + ': ' + formatMs(p.value); }); return s; } },
+            legend: { top: 0 },
+            grid: { left: 200, right: 30, top: 40, bottom: 30 },
+            yAxis: { type: 'category', data: urlLabels, inverse: true, axisLabel: { width: 180, overflow: 'truncate', fontSize: 11 } },
+            xAxis: { type: 'value', name: 'ms', axisLabel: { formatter: function(v){ return formatMs(v); } } },
+            color: ['#5470c6', '#fac858', '#ee6666'],
+            series: [
+              { name: 'p50', type: 'bar', data: ttfbP50 },
+              { name: 'p95', type: 'bar', data: ttfbP95 },
+              { name: 'p99', type: 'bar', data: ttfbP99 }
+            ]
+          });
+
+          /* Total Response Time Chart */
+          self.renderChart('chart-http-total', {
+            tooltip: { trigger: 'axis', axisPointer: { type: 'shadow' }, formatter: function(params) { var s = escHtml(params[0].axisValue).replace('\n', ' '); params.forEach(function(p) { s += '<br/>' + p.marker + ' ' + escHtml(p.seriesName) + ': ' + formatMs(p.value); }); return s; } },
+            legend: { top: 0 },
+            grid: { left: 200, right: 30, top: 40, bottom: 30 },
+            yAxis: { type: 'category', data: urlLabels, inverse: true, axisLabel: { width: 180, overflow: 'truncate', fontSize: 11 } },
+            xAxis: { type: 'value', name: 'ms', axisLabel: { formatter: function(v){ return formatMs(v); } } },
+            color: ['#91cc75', '#fac858', '#ee6666'],
+            series: [
+              { name: 'p50', type: 'bar', data: totalP50 },
+              { name: 'p95', type: 'bar', data: totalP95 },
+              { name: 'p99', type: 'bar', data: totalP99 }
+            ]
+          });
+
+          /* Response Size & Download Time */
+          self.renderChart('chart-http-size-download', {
+            tooltip: { trigger: 'axis', axisPointer: { type: 'shadow' }, formatter: function(params) { var s = escHtml(params[0].axisValue).replace('\n', ' '); params.forEach(function(p) { s += '<br/>' + p.marker + ' ' + escHtml(p.seriesName) + ': ' + (p.seriesIndex === 0 ? formatBytes(p.value) : formatMs(p.value)); }); return s; } },
+            legend: { top: 0 },
+            grid: { left: 200, right: 80, top: 40, bottom: 30 },
+            yAxis: { type: 'category', data: urlLabels, inverse: true, axisLabel: { width: 180, overflow: 'truncate', fontSize: 11 } },
+            xAxis: [
+              { type: 'value', name: 'Size', axisLabel: { formatter: function(v){ return formatBytes(v); } } },
+              { type: 'value', name: 'Time (ms)', position: 'top', axisLabel: { formatter: function(v){ return formatMs(v); } } }
+            ],
+            color: ['#73c0de', '#fac858'],
+            series: [
+              { name: 'Response Size', type: 'bar', xAxisIndex: 0, data: sizes },
+              { name: 'Download p50', type: 'bar', xAxisIndex: 1, data: downloadP50 }
             ]
           });
         },

@@ -1,11 +1,39 @@
 import { chromium } from 'playwright';
-import type { Request } from 'playwright';
+import type { Page, Request } from 'playwright';
 import type {
   Config, Scenario, RunMetrics, PlaywrightScenarioResult,
   ScenarioResult, URLResult, DeltaMetrics, LighthouseScenarioResult,
+  ThrottleProfileName,
 } from '../types/index.js';
 import { analyzePageMetrics } from '../analyzer/index.js';
 import { runLighthouse } from '../lighthouse/index.js';
+import { runHttpTiming } from '../http-timing/index.js';
+import type { Protocol } from '../protocol/index.js';
+
+// --- Network Throttling ---
+
+const THROTTLE_PROFILES: Record<ThrottleProfileName, { downloadThroughput: number; uploadThroughput: number; latency: number }> = {
+  '4g':       { downloadThroughput: 1_125_000,  uploadThroughput: 187_500,  latency: 20 },
+  'cable-10': { downloadThroughput: 1_250_000,  uploadThroughput: 625_000,  latency: 14 },
+  'cable-5':  { downloadThroughput:   625_000,  uploadThroughput: 125_000,  latency: 28 },
+  '3g':       { downloadThroughput:   200_000,  uploadThroughput:  96_000,  latency: 150 },
+};
+
+export { THROTTLE_PROFILES };
+
+async function applyThrottling(page: Page, config: Config): Promise<void> {
+  if (!config.network?.throttle) return;
+  const profile = THROTTLE_PROFILES[config.network.profile];
+  if (!profile) throw new Error(`Unknown throttle profile: ${config.network.profile}`);
+
+  const client = await page.context().newCDPSession(page);
+  await client.send('Network.emulateNetworkConditions', {
+    offline: false,
+    downloadThroughput: profile.downloadThroughput,
+    uploadThroughput: profile.uploadThroughput,
+    latency: profile.latency,
+  });
+}
 
 interface SimpleCoverageEntry {
   url: string;
@@ -127,15 +155,18 @@ export function calculateDeltas(scenarios: Record<Scenario, ScenarioResult>): UR
 
 // --- Core ---
 
-export async function runScenario(url: string, scenario: Scenario, config: Config): Promise<PlaywrightScenarioResult> {
+export async function runScenario(url: string, scenario: Scenario, config: Config, protocol?: Protocol): Promise<PlaywrightScenarioResult> {
   const blockPatterns = getBlockPatterns(scenario, config);
   const browser = await chromium.launch({ headless: config.headless });
 
   try {
     // --- Cold run ---
+    protocol?.playwrightColdStart(scenario);
     console.log(`  [Playwright] ${scenario} cold run...`);
+    const coldStart = Date.now();
     const coldContext = await browser.newContext();
     const coldPage = await coldContext.newPage();
+    await applyThrottling(coldPage, config);
 
     if (blockPatterns.length > 0) {
       await coldPage.route('**/*', (route) => {
@@ -162,6 +193,7 @@ export async function runScenario(url: string, scenario: Scenario, config: Confi
       jsCoverage as Parameters<typeof analyzePageMetrics>[3],
       cssCoverage as Parameters<typeof analyzePageMetrics>[4],
     );
+    protocol?.playwrightColdResult(scenario, cold, Date.now() - coldStart);
     await coldContext.close();
 
     // --- Warm runs ---
@@ -169,13 +201,16 @@ export async function runScenario(url: string, scenario: Scenario, config: Confi
     const warmRuns: RunMetrics[] = [];
 
     for (let i = 0; i < config.warmRuns; i++) {
+      protocol?.playwrightWarmStart(scenario, i + 1, config.warmRuns);
       console.log(`  [Playwright] ${scenario} warm run ${i + 1}/${config.warmRuns}...`);
+      const warmStart = Date.now();
 
       if (i > 0) {
         await new Promise(r => setTimeout(r, config.waitBetweenRuns));
       }
 
       const warmPage = await warmContext.newPage();
+      await applyThrottling(warmPage, config);
 
       if (blockPatterns.length > 0) {
         await warmPage.route('**/*', (route) => {
@@ -202,6 +237,7 @@ export async function runScenario(url: string, scenario: Scenario, config: Confi
         warmJsCoverage as Parameters<typeof analyzePageMetrics>[3],
         warmCssCoverage as Parameters<typeof analyzePageMetrics>[4],
       );
+      protocol?.playwrightWarmResult(scenario, i + 1, metrics, Date.now() - warmStart);
       warmRuns.push(metrics);
       await warmPage.close();
     }
@@ -216,7 +252,7 @@ export async function runScenario(url: string, scenario: Scenario, config: Confi
   }
 }
 
-export async function runURL(url: string, config: Config): Promise<URLResult> {
+export async function runURL(url: string, config: Config, protocol?: Protocol): Promise<URLResult> {
   console.log(`\n=== ${url} ===`);
 
   const scenarios = {} as Record<Scenario, ScenarioResult>;
@@ -227,24 +263,32 @@ export async function runURL(url: string, config: Config): Promise<URLResult> {
 
       let playwright: PlaywrightScenarioResult;
       try {
-        playwright = await runScenario(url, scenario, config);
+        playwright = await runScenario(url, scenario, config, protocol);
       } catch (err) {
-        console.error(`  Playwright error for ${scenario}: ${err instanceof Error ? err.message : String(err)}`);
+        const msg = err instanceof Error ? err.message : String(err);
+        protocol?.error(`PLAYWRIGHT › ${scenario}`, msg);
+        console.error(`  Playwright error for ${scenario}: ${msg}`);
         throw err;
       }
 
       let lighthouse: LighthouseScenarioResult;
       if (config.lighthouse.enabled) {
+        protocol?.lighthouseStart(scenario, 'cold');
         try {
           lighthouse = await runLighthouse(url, scenario, config);
+          protocol?.lighthouseResult(scenario, 'cold', lighthouse.cold);
+          protocol?.lighthouseResult(scenario, 'warm', lighthouse.warm);
         } catch (err) {
-          console.error(`  Lighthouse error for ${scenario}: ${err instanceof Error ? err.message : String(err)}`);
+          const msg = err instanceof Error ? err.message : String(err);
+          protocol?.error(`LIGHTHOUSE › ${scenario}`, msg);
+          console.error(`  Lighthouse error for ${scenario}: ${msg}`);
           lighthouse = {
             cold: { performanceScore: 0, audits: {} },
             warm: { performanceScore: 0, audits: {} },
           };
         }
       } else {
+        protocol?.skip('LIGHTHOUSE', 'disabled');
         lighthouse = {
           cold: { performanceScore: 0, audits: {} },
           warm: { performanceScore: 0, audits: {} },
@@ -256,7 +300,21 @@ export async function runURL(url: string, config: Config): Promise<URLResult> {
 
     const deltas = calculateDeltas(scenarios);
 
-    return { url, status: 'ok', scenarios, deltas };
+    // HTTP-Timing (scenario-independent, measures server response)
+    let httpTiming: URLResult['httpTiming'];
+    if (config.httpTiming?.enabled) {
+      protocol?.httpTimingStart(url, config.httpTiming.runs);
+      try {
+        httpTiming = await runHttpTiming(url, config.httpTiming);
+        protocol?.httpTimingResult(httpTiming);
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : String(err);
+        protocol?.error('HTTP-TIMING', msg);
+        console.error(`  HTTP-Timing error: ${msg}`);
+      }
+    }
+
+    return { url, status: 'ok', scenarios, deltas, httpTiming };
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
     console.error(`Error processing ${url}: ${message}`);

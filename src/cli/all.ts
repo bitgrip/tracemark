@@ -5,6 +5,7 @@ import type { Config, DomainInput, DomainResult, URLResult, Report } from '../ty
 import { runURL } from '../scenarios/index.js';
 import { generateReport, saveReport, loadReport } from '../reporter/index.js';
 import { generateHTML } from '../visualizer/index.js';
+import { Protocol } from '../protocol/index.js';
 
 function parseArgs(argv: string[]): { config: string; urls: string[] } {
   let config = 'config.yaml';
@@ -91,6 +92,11 @@ async function runAnalysis(args: { config: string; urls: string[] }): Promise<st
   console.log(`Warm runs: ${config.warmRuns}`);
   console.log('');
 
+  // Initialize protocol logger
+  const protocol = new Protocol();
+  protocol.header();
+  protocol.config(config);
+
   for (const domain of domainInputs) {
     for (const url of domain.urls) {
       if (!validateUrl(url)) {
@@ -106,6 +112,7 @@ async function runAnalysis(args: { config: string; urls: string[] }): Promise<st
   for (let di = 0; di < totalDomains; di++) {
     const domainInput = domainInputs[di];
     console.log(`📊 Analyzing ${domainInput.name} (${di + 1}/${totalDomains})`);
+    protocol.domainStart(domainInput.name, di + 1, totalDomains);
 
     const urlResults: URLResult[] = [];
     const domainUrlCount = domainInput.urls.length;
@@ -126,12 +133,14 @@ async function runAnalysis(args: { config: string; urls: string[] }): Promise<st
       }
 
       console.log(`  → ${url} (${ui + 1}/${domainUrlCount})`);
+      protocol.urlStart(url, ui + 1, domainUrlCount);
 
       try {
-        const urlResult = await runURL(url, config);
+        const urlResult = await runURL(url, config, protocol);
         urlResults.push(urlResult);
       } catch (err) {
         const message = err instanceof Error ? err.message : String(err);
+        protocol.error('FATAL', message);
         console.error(`  ❌ Error analyzing ${url}: ${message}`);
         urlResults.push({
           url,
@@ -141,13 +150,23 @@ async function runAnalysis(args: { config: string; urls: string[] }): Promise<st
           deltas: { full_vs_noThirdParty: {}, full_vs_noTrackingOnly: {} },
         });
       }
+
+      protocol.urlEnd();
     }
 
+    protocol.domainEnd();
     domainResults.push({ name: domainInput.name, urls: urlResults });
   }
 
   const report = generateReport(domainResults, config);
   const savedPaths = await saveReport(report);
+
+  // Save protocol alongside the first report
+  if (savedPaths.length > 0) {
+    const reportDir = savedPaths[0].replace(/\/report\.json$/, '');
+    const protocolPath = await protocol.save(reportDir);
+    console.log(`  Protocol: ${protocolPath}`);
+  }
 
   console.log('');
   console.log('✅ Analysis complete!');
