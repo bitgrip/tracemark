@@ -16,14 +16,14 @@ Assembles domain results into a `Report` object with metadata, saves it as JSON,
 
 ```
 Report
-├── meta: { timestamp, version, config: { warmRuns, waitBetweenRuns, scenarios } }
+├── meta: { timestamp, version, config: { warmRuns, waitBetweenRuns, lighthouseRuns, httpTimingRuns, scenarios } }
 └── domains[]
     ├── name
     └── urls[]
         ├── url, status
         ├── scenarios: { full, no-third-party, no-tracking-only }
         │   ├── playwright: { cold: RunMetrics, warmRuns[], warmAvg }
-        │   └── lighthouse: { cold: LighthouseResult, warm: LighthouseResult }
+    │   └── lighthouse: { cold: LighthouseResult, warm: LighthouseResult, coldRuns[], warmRuns[] }
         └── deltas: { full_vs_noThirdParty, full_vs_noTrackingOnly }
 ```
 

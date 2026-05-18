@@ -12,7 +12,18 @@ export interface HTMLMetrics {
   prefetchHints: Record<string, number>;
 }
 
-export type BundleClassification = 'framework' | 'internal-page' | 'internal-shell' | 'internal' | 'vendor' | 'external' | 'unknown';
+export type BundleClassification =
+  | 'framework'
+  | 'internal-page'
+  | 'internal-shell'
+  | 'internal'
+  | 'vendor'
+  | 'external'
+  | 'cmp'
+  | 'analytics'
+  | 'tag-manager'
+  | 'document'
+  | 'unknown';
 
 export interface BundleInfo {
   url: string;

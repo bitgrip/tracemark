@@ -285,6 +285,8 @@ export async function runURL(url: string, config: Config, protocol?: Protocol): 
           lighthouse = {
             cold: { performanceScore: 0, audits: {} },
             warm: { performanceScore: 0, audits: {} },
+            coldRuns: [],
+            warmRuns: [],
           };
         }
       } else {
@@ -292,6 +294,8 @@ export async function runURL(url: string, config: Config, protocol?: Protocol): 
         lighthouse = {
           cold: { performanceScore: 0, audits: {} },
           warm: { performanceScore: 0, audits: {} },
+          coldRuns: [],
+          warmRuns: [],
         };
       }
 

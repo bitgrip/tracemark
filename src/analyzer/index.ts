@@ -71,7 +71,7 @@ export async function analyzePageMetrics(
 ): Promise<RunMetrics> {
   const [html, javascript, css, thirdParty] = await Promise.all([
     analyzeHTML(page).catch((): HTMLMetrics => defaultHTML()),
-    analyzeJavaScript(page, jsCoverage).catch((): JavaScriptMetrics => defaultJavaScript()),
+    analyzeJavaScript(page, jsCoverage, pageUrl).catch((): JavaScriptMetrics => defaultJavaScript()),
     analyzeCSS(page, cssCoverage).catch((): CSSMetrics => defaultCSS()),
     analyzeThirdParty(page, requests, pageUrl).catch((): ThirdPartyMetrics => defaultThirdParty()),
   ]);

@@ -95,7 +95,7 @@ async function main(): Promise<void> {
 
   console.log(`Scenarios: ${config.scenarios.join(', ')}`);
   console.log(`Warm runs: ${config.warmRuns}`);
-  console.log(`Lighthouse: ${config.lighthouse.enabled ? 'enabled' : 'disabled'}`);
+  console.log(`Lighthouse: ${config.lighthouse.enabled ? `enabled (${config.lighthouse.runs ?? 1} runs per cold/warm state)` : 'disabled'}`);
   console.log(`HTTP-Timing: ${config.httpTiming?.enabled ? 'enabled' : 'disabled'}`);
   console.log('');
 

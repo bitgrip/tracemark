@@ -26,6 +26,7 @@ function median(values: number[]): number {
 export async function analyzeJavaScript(
   page: Page,
   coverageEntries: CoverageEntry[],
+  pageUrl?: string,
 ): Promise<JavaScriptMetrics> {
   // Get transfer sizes from performance entries
   const perfMap = await page.evaluate<Record<string, number>>(() => {
@@ -62,7 +63,7 @@ export async function analyzeJavaScript(
 
     bundles.push({
       url: entry.url,
-      classification: classifyBundle(entry.url),
+      classification: classifyBundle(entry.url, pageUrl),
       resourceSize,
       transferSize,
       unusedBytes,

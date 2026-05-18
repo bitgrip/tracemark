@@ -11,4 +11,6 @@ export interface LighthouseResult {
 export interface LighthouseScenarioResult {
   cold: LighthouseResult;
   warm: LighthouseResult;
+  coldRuns: LighthouseResult[];
+  warmRuns: LighthouseResult[];
 }

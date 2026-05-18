@@ -47,6 +47,8 @@ export interface ReportMeta {
   config: {
     warmRuns: number;
     waitBetweenRuns: number;
+    lighthouseRuns?: number;
+    httpTimingRuns?: number;
     scenarios: Scenario[];
     network?: {
       throttle: boolean;

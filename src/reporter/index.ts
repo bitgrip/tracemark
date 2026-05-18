@@ -10,6 +10,8 @@ export function generateReport(domains: DomainResult[], config: Config): Report 
       config: {
         warmRuns: config.warmRuns,
         waitBetweenRuns: config.waitBetweenRuns,
+        lighthouseRuns: config.lighthouse.runs ?? 1,
+        httpTimingRuns: config.httpTiming?.runs,
         scenarios: config.scenarios,
         ...(config.network ? { network: config.network } : {}),
       },

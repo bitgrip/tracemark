@@ -1,4 +1,4 @@
-warmRuns: 3
+warmRuns: 7
 waitBetweenRuns: 2000
 timeout: 30000
 headless: true
@@ -11,6 +11,7 @@ network:
   profile: "cable-10"
 lighthouse:
   enabled: true
+  runs: 5
   flags:
     - "--chrome-flags=--headless"
 httpTiming:

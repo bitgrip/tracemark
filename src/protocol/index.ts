@@ -57,6 +57,9 @@ export class Protocol {
     this.lines.push('│');
 
     this.lines.push(`│ Lighthouse:      ${config.lighthouse.enabled ? 'enabled' : 'disabled'}`);
+    if (config.lighthouse.enabled) {
+      this.lines.push(`│   Runs/State:    ${config.lighthouse.runs ?? 1}`);
+    }
     if (config.lighthouse.enabled && config.lighthouse.flags.length > 0) {
       this.lines.push(`│   Flags:         ${config.lighthouse.flags.join(' ')}`);
     }

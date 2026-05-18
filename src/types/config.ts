@@ -10,6 +10,7 @@ export interface Config {
   scenarios: Scenario[];
   lighthouse: {
     enabled: boolean;
+    runs?: number;
     flags: string[];
   };
   httpTiming: {

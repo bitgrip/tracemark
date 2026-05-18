@@ -10,3 +10,4 @@ package-lock.json
 urls/*
 !urls/README.md
 stories/*
+audits/*

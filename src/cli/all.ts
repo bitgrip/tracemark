@@ -90,6 +90,7 @@ async function runAnalysis(args: { config: string; urls: string[] }): Promise<st
 
   console.log(`Scenarios: ${config.scenarios.join(', ')}`);
   console.log(`Warm runs: ${config.warmRuns}`);
+  console.log(`Lighthouse runs/state: ${config.lighthouse.runs ?? 1}`);
   console.log('');
 
   // Initialize protocol logger

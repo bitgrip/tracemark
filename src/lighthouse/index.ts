@@ -30,13 +30,29 @@ function defaultLighthouseResult(): LighthouseResult {
   return { performanceScore: 0, audits };
 }
 
+function averageLighthouseResults(results: LighthouseResult[]): LighthouseResult {
+  if (results.length === 0) {
+    return defaultLighthouseResult();
+  }
+
+  const audits: Record<string, LighthouseAudit> = {};
+  for (const id of LIGHTHOUSE_AUDITS) {
+    const total = results.reduce((sum, result) => sum + (result.audits[id]?.numericValue ?? 0), 0);
+    audits[id] = { numericValue: total / results.length };
+  }
+
+  const performanceScore = results.reduce((sum, result) => sum + result.performanceScore, 0) / results.length;
+  return { performanceScore, audits };
+}
+
 export function extractLighthouseResult(lhr: Record<string, unknown>): LighthouseResult {
   const categories = lhr['categories'] as Record<string, { score?: number }> | undefined;
   const performanceScore = categories?.['performance']?.score ?? 0;
 
-  const lhrAudits = lhr['audits'] as Record<string, { numericValue?: number; displayValue?: string }> | undefined;
+  const lhrAudits = lhr['audits'] as Record<string, { numericValue?: number; displayValue?: string; score?: number }> | undefined;
   const audits: Record<string, LighthouseAudit> = {};
 
+  // Ensure all core audits are present (default to 0 if missing)
   for (const id of LIGHTHOUSE_AUDITS) {
     const audit = lhrAudits?.[id];
     if (audit) {
@@ -46,6 +62,19 @@ export function extractLighthouseResult(lhr: Record<string, unknown>): Lighthous
       };
     } else {
       audits[id] = { numericValue: 0 };
+    }
+  }
+
+  // Capture all remaining audits that have a numericValue (optimization opportunities, diagnostics)
+  if (lhrAudits) {
+    for (const [id, audit] of Object.entries(lhrAudits)) {
+      if (audits[id]) continue; // already captured above
+      if (audit.numericValue != null) {
+        audits[id] = {
+          numericValue: audit.numericValue,
+          ...(audit.displayValue ? { displayValue: audit.displayValue } : {}),
+        };
+      }
     }
   }
 
@@ -83,6 +112,7 @@ async function runLighthouseCLI(url: string, blockedPatterns: string[], flags: s
 export async function runLighthouse(url: string, scenario: Scenario, config: Config): Promise<LighthouseScenarioResult> {
   const blockedPatterns = getBlockedPatterns(scenario, config);
   const extraFlags = config.lighthouse.flags.filter(f => !f.startsWith('--chrome-flags'));
+  const runs = Math.max(config.lighthouse.runs ?? 1, 1);
 
   if (config.network?.throttle) {
     const profile = THROTTLE_PROFILES[config.network.profile];
@@ -96,11 +126,22 @@ export async function runLighthouse(url: string, scenario: Scenario, config: Con
     );
   }
 
-  console.log(`  [Lighthouse] ${scenario} cold run...`);
-  const cold = await runLighthouseCLI(url, blockedPatterns, extraFlags);
+  const coldRuns: LighthouseResult[] = [];
+  for (let i = 0; i < runs; i++) {
+    console.log(`  [Lighthouse] ${scenario} cold run ${i + 1}/${runs}...`);
+    coldRuns.push(await runLighthouseCLI(url, blockedPatterns, extraFlags));
+  }
 
-  console.log(`  [Lighthouse] ${scenario} warm run...`);
-  const warm = await runLighthouseCLI(url, blockedPatterns, extraFlags);
+  const warmRuns: LighthouseResult[] = [];
+  for (let i = 0; i < runs; i++) {
+    console.log(`  [Lighthouse] ${scenario} warm run ${i + 1}/${runs}...`);
+    warmRuns.push(await runLighthouseCLI(url, blockedPatterns, extraFlags));
+  }
 
-  return { cold, warm };
+  return {
+    cold: averageLighthouseResults(coldRuns),
+    warm: averageLighthouseResults(warmRuns),
+    coldRuns,
+    warmRuns,
+  };
 }

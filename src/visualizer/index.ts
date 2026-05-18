@@ -529,7 +529,7 @@ export function generateHTML(report: Report): string {
 
           /* Bundle horizontal bar */
           var bundles = pw.javascript && pw.javascript.bundles ? pw.javascript.bundles.slice().sort(function(a,b){ return b.transferSize - a.transferSize; }) : [];
-          var classColors = { framework: '#5470c6', 'internal-page': '#91cc75', 'internal-shell': '#73c0de', internal: '#3ba272', vendor: '#fac858', external: '#ee6666', unknown: '#9a60b4' };
+          var classColors = { framework: '#5470c6', 'internal-page': '#91cc75', 'internal-shell': '#73c0de', internal: '#3ba272', vendor: '#fac858', external: '#ee6666', cmp: '#fc8452', analytics: '#9a60b4', 'tag-manager': '#ea7ccc', document: '#546570', unknown: '#999' };
           self.renderChart('drilldown-bundles', {
             tooltip: { trigger: 'axis', axisPointer: { type: 'shadow' }, formatter: function(p) { var d = p[0]; return escHtml(d.name) + '<br/>Transfer: ' + formatBytes(d.value); } },
             grid: { left: 200, right: 30, top: 10, bottom: 30 },
@@ -740,8 +740,8 @@ export function generateHTML(report: Report): string {
           });
 
           /* Bundle breakdown stacked */
-          var classifications = ['framework', 'vendor', 'internal', 'internal-page', 'internal-shell', 'external', 'unknown'];
-          var classColors = { framework: '#5470c6', vendor: '#fac858', internal: '#3ba272', 'internal-page': '#91cc75', 'internal-shell': '#73c0de', external: '#ee6666', unknown: '#9a60b4' };
+          var classifications = ['framework', 'vendor', 'internal', 'internal-page', 'internal-shell', 'external', 'cmp', 'analytics', 'tag-manager', 'document', 'unknown'];
+          var classColors = { framework: '#5470c6', vendor: '#fac858', internal: '#3ba272', 'internal-page': '#91cc75', 'internal-shell': '#73c0de', external: '#ee6666', cmp: '#fc8452', analytics: '#9a60b4', 'tag-manager': '#ea7ccc', document: '#546570', unknown: '#999' };
           var breakdownSeries = classifications.map(function(cls) {
             return {
               name: cls, type: 'bar', stack: 'bundle',
@@ -856,7 +856,7 @@ export function generateHTML(report: Report): string {
             d.urls.forEach(function(u) {
               var ht = u.httpTiming;
               if (!ht) return;
-              var label = d.name + '\n' + (ht.url.length > 40 ? '...' + ht.url.slice(-37) : ht.url);
+              var label = d.name + '\\n' + (ht.url.length > 40 ? '...' + ht.url.slice(-37) : ht.url);
               urlLabels.push(label);
               ttfbP50.push(ht.ttfb.p50);
               ttfbP95.push(ht.ttfb.p95);
@@ -873,7 +873,7 @@ export function generateHTML(report: Report): string {
 
           /* TTFB Chart */
           self.renderChart('chart-http-ttfb', {
-            tooltip: { trigger: 'axis', axisPointer: { type: 'shadow' }, formatter: function(params) { var s = escHtml(params[0].axisValue).replace('\n', ' '); params.forEach(function(p) { s += '<br/>' + p.marker + ' ' + escHtml(p.seriesName) + ': ' + formatMs(p.value); }); return s; } },
+            tooltip: { trigger: 'axis', axisPointer: { type: 'shadow' }, formatter: function(params) { var s = escHtml(params[0].axisValue).replace('\\n', ' '); params.forEach(function(p) { s += '<br/>' + p.marker + ' ' + escHtml(p.seriesName) + ': ' + formatMs(p.value); }); return s; } },
             legend: { top: 0 },
             grid: { left: 200, right: 30, top: 40, bottom: 30 },
             yAxis: { type: 'category', data: urlLabels, inverse: true, axisLabel: { width: 180, overflow: 'truncate', fontSize: 11 } },
@@ -888,7 +888,7 @@ export function generateHTML(report: Report): string {
 
           /* Total Response Time Chart */
           self.renderChart('chart-http-total', {
-            tooltip: { trigger: 'axis', axisPointer: { type: 'shadow' }, formatter: function(params) { var s = escHtml(params[0].axisValue).replace('\n', ' '); params.forEach(function(p) { s += '<br/>' + p.marker + ' ' + escHtml(p.seriesName) + ': ' + formatMs(p.value); }); return s; } },
+            tooltip: { trigger: 'axis', axisPointer: { type: 'shadow' }, formatter: function(params) { var s = escHtml(params[0].axisValue).replace('\\n', ' '); params.forEach(function(p) { s += '<br/>' + p.marker + ' ' + escHtml(p.seriesName) + ': ' + formatMs(p.value); }); return s; } },
             legend: { top: 0 },
             grid: { left: 200, right: 30, top: 40, bottom: 30 },
             yAxis: { type: 'category', data: urlLabels, inverse: true, axisLabel: { width: 180, overflow: 'truncate', fontSize: 11 } },
@@ -903,7 +903,7 @@ export function generateHTML(report: Report): string {
 
           /* Response Size & Download Time */
           self.renderChart('chart-http-size-download', {
-            tooltip: { trigger: 'axis', axisPointer: { type: 'shadow' }, formatter: function(params) { var s = escHtml(params[0].axisValue).replace('\n', ' '); params.forEach(function(p) { s += '<br/>' + p.marker + ' ' + escHtml(p.seriesName) + ': ' + (p.seriesIndex === 0 ? formatBytes(p.value) : formatMs(p.value)); }); return s; } },
+            tooltip: { trigger: 'axis', axisPointer: { type: 'shadow' }, formatter: function(params) { var s = escHtml(params[0].axisValue).replace('\\n', ' '); params.forEach(function(p) { s += '<br/>' + p.marker + ' ' + escHtml(p.seriesName) + ': ' + (p.seriesIndex === 0 ? formatBytes(p.value) : formatMs(p.value)); }); return s; } },
             legend: { top: 0 },
             grid: { left: 200, right: 80, top: 40, bottom: 30 },
             yAxis: { type: 'category', data: urlLabels, inverse: true, axisLabel: { width: 180, overflow: 'truncate', fontSize: 11 } },

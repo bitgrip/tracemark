@@ -8,18 +8,18 @@ Runs Lighthouse performance audits independently from Playwright, using Lighthou
 
 | File | Responsibility |
 |---|---|
-| `index.ts` | Executes the Lighthouse CLI, extracts results, runs cold + warm audits per scenario |
+| `index.ts` | Executes the Lighthouse CLI, extracts results, runs repeated cold + warm audits per scenario, and averages them |
 | `audits.ts` | Defines the list of captured Lighthouse audit IDs |
 
 ## Input
 
 - **`url`** — Page URL to audit
 - **`scenario`** — `full`, `no-third-party`, or `no-tracking-only`
-- **`config`** — App config (blocklists, Lighthouse flags)
+- **`config`** — App config (blocklists, Lighthouse flags, repeat count)
 
 ## Output
 
-Returns `LighthouseScenarioResult` containing `cold` and `warm` `LighthouseResult` objects, each with a `performanceScore` and audit map.
+Returns `LighthouseScenarioResult` containing averaged `cold` and `warm` `LighthouseResult` objects plus the underlying `coldRuns[]` and `warmRuns[]` samples.
 
 ## How It Works
 
@@ -28,7 +28,8 @@ Returns `LighthouseScenarioResult` containing `cold` and `warm` `LighthouseResul
 3. For non-`full` scenarios, adds `--blocked-url-patterns` for each blocklist entry
 4. Executes via `child_process.execFile` (separate Chrome process)
 5. Parses JSON stdout and extracts scores + audit numeric values
-6. Runs twice per scenario: once cold, once warm
+6. Runs Lighthouse multiple times per state (`config.lighthouse.runs`, default fallback `1`)
+7. Averages all cold runs into `cold` and all warm runs into `warm`
 
 ## Captured Audits
 
