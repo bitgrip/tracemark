@@ -41,6 +41,31 @@ export interface DomainResult {
   inventory?: ScriptInventory;
 }
 
+// --- Measurement: atomic per-domain result ---
+
+export interface MeasurementMeta {
+  timestamp: string;
+  version: string;
+  config: {
+    warmRuns: number;
+    waitBetweenRuns: number;
+    lighthouseRuns?: number;
+    httpTimingRuns?: number;
+    scenarios: Scenario[];
+    network?: {
+      throttle: boolean;
+      profile: string;
+    };
+  };
+}
+
+export interface Measurement {
+  meta: MeasurementMeta;
+  domain: DomainResult;
+}
+
+// --- Report: self-contained aggregation of N measurements ---
+
 export interface ReportMeta {
   timestamp: string;
   version: string;
@@ -58,6 +83,13 @@ export interface ReportMeta {
 }
 
 export interface Report {
+  meta: ReportMeta;
+  measurements: Measurement[];
+  inventoryComparison?: InventoryComparison;
+}
+
+/** @deprecated Use Report.measurements[].domain instead */
+export type ReportLegacy = {
   meta: ReportMeta;
   domains: DomainResult[];
   inventoryComparison?: InventoryComparison;

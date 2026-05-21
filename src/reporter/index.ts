@@ -1,8 +1,8 @@
 import * as fs from 'fs/promises';
 import * as path from 'path';
-import type { Report, DomainResult, Config } from '../types/index.js';
+import type { Report, Measurement, DomainResult, Config } from '../types/index.js';
 
-export function generateReport(domains: DomainResult[], config: Config): Report {
+export function createMeasurement(domain: DomainResult, config: Config): Measurement {
   return {
     meta: {
       timestamp: new Date().toISOString(),
@@ -16,7 +16,19 @@ export function generateReport(domains: DomainResult[], config: Config): Report 
         ...(config.network ? { network: config.network } : {}),
       },
     },
-    domains,
+    domain,
+  };
+}
+
+export function generateReport(measurements: Measurement[]): Report {
+  const meta = measurements[0].meta;
+  return {
+    meta: {
+      timestamp: new Date().toISOString(),
+      version: meta.version,
+      config: meta.config,
+    },
+    measurements,
   };
 }
 
@@ -34,22 +46,42 @@ export function createTimestamp(): string {
   return `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}T${pad(now.getHours())}-${pad(now.getMinutes())}-${pad(now.getSeconds())}`;
 }
 
-export async function saveReport(report: Report, outputDir?: string): Promise<string[]> {
+export async function saveMeasurement(measurement: Measurement, baseDir?: string): Promise<string> {
+  const dir = baseDir ?? 'measurements';
+  const slug = createDomainSlug(measurement.domain.name);
+  const timestamp = createTimestamp();
+  const outputDir = path.join(dir, slug, timestamp);
+  await fs.mkdir(outputDir, { recursive: true });
+  const filePath = path.join(outputDir, 'measurement.json');
+  await fs.writeFile(filePath, JSON.stringify(measurement, null, 2), 'utf-8');
+  return filePath;
+}
+
+export async function saveReport(report: Report, outputDir?: string): Promise<string> {
   const baseDir = outputDir ?? 'reports';
   const timestamp = createTimestamp();
-  const savedPaths: string[] = [];
+  const dir = path.join(baseDir, timestamp);
+  await fs.mkdir(dir, { recursive: true });
+  const filePath = path.join(dir, 'report.json');
+  await fs.writeFile(filePath, JSON.stringify(report, null, 2), 'utf-8');
+  return filePath;
+}
 
-  for (const domain of report.domains) {
-    const slug = createDomainSlug(domain.name);
-    const dir = path.join(baseDir, slug, timestamp);
-    await fs.mkdir(dir, { recursive: true });
-    const filePath = path.join(dir, 'report.json');
-    await fs.writeFile(filePath, JSON.stringify(report, null, 2), 'utf-8');
-    savedPaths.push(filePath);
-    console.log(`Saved report for "${domain.name}" to ${filePath}`);
+export async function loadMeasurement(filePath: string): Promise<Measurement> {
+  let content: string;
+  try {
+    content = await fs.readFile(filePath, 'utf-8');
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    throw new Error(`Failed to read measurement file "${filePath}": ${message}`);
   }
 
-  return savedPaths;
+  try {
+    return JSON.parse(content) as Measurement;
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    throw new Error(`Failed to parse measurement JSON from "${filePath}": ${message}`);
+  }
 }
 
 export async function loadReport(filePath: string): Promise<Report> {
@@ -62,7 +94,17 @@ export async function loadReport(filePath: string): Promise<Report> {
   }
 
   try {
-    return JSON.parse(content) as Report;
+    const data = JSON.parse(content) as Record<string, unknown>;
+    // Support legacy format with "domains" field
+    if ('domains' in data && !('measurements' in data)) {
+      const domains = data['domains'] as DomainResult[];
+      const meta = data['meta'] as Report['meta'];
+      return {
+        meta,
+        measurements: domains.map(domain => ({ meta, domain })),
+      };
+    }
+    return data as unknown as Report;
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
     throw new Error(`Failed to parse report JSON from "${filePath}": ${message}`);

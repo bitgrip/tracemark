@@ -38,9 +38,10 @@ blocklists:
     - "*.youtube.com"
     - "*.instagram.com"
     - "*.linkedin.com"
+    - "stats.unicef.de"
+  criticalThirdParty:
     - "*.usercentrics.eu"
     - "*.frcapi.com"
-    - "stats.unicef.de"
   trackingOnly:
     - "*.google-analytics.com"
     - "*.googletagmanager.com"

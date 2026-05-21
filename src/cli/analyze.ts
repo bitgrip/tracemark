@@ -1,9 +1,9 @@
 import * as fs from 'fs/promises';
 import * as yaml from 'js-yaml';
-import type { Config, DomainInput, DomainResult, URLResult } from '../types/index.js';
+import type { Config, DomainInput, DomainResult, URLResult, Measurement } from '../types/index.js';
 import { runURL } from '../scenarios/index.js';
 import { runHttpTiming } from '../http-timing/index.js';
-import { generateReport, saveReport } from '../reporter/index.js';
+import { createMeasurement, generateReport, saveMeasurement, saveReport } from '../reporter/index.js';
 import { Protocol } from '../protocol/index.js';
 
 function parseArgs(argv: string[]): { config: string; urls: string; skipLighthouse: boolean; skipHttpTiming: boolean; skipPlaywright: boolean } {
@@ -187,28 +187,39 @@ async function main(): Promise<void> {
     domainResults.push({ name: domainInput.name, urls: urlResults });
   }
 
-  const report = generateReport(domainResults, config);
-  const savedPaths = await saveReport(report);
+  // Save individual measurements per domain
+  const measurements: Measurement[] = [];
+  const measurementPaths: string[] = [];
+  for (const domainResult of domainResults) {
+    const measurement = createMeasurement(domainResult, config);
+    measurements.push(measurement);
+    const mPath = await saveMeasurement(measurement);
+    measurementPaths.push(mPath);
+    console.log(`  Measurement: ${mPath}`);
+  }
+
+  // Save aggregated report
+  const report = generateReport(measurements);
+  const reportPath = await saveReport(report);
 
   const elapsed = Date.now() - startTime;
   protocol.footer(elapsed, domainResults.length, totalUrls);
 
-  // Save protocol alongside the first report
-  if (savedPaths.length > 0) {
-    const reportDir = savedPaths[0].replace(/\/report\.json$/, '');
-    const protocolPath = await protocol.save(reportDir);
-    console.log(`  Protocol: ${protocolPath}`);
-  }
+  // Save protocol alongside the report
+  const reportDir = reportPath.replace(/\/report\.json$/, '');
+  const protocolPath = await protocol.save(reportDir);
+  console.log(`  Protocol: ${protocolPath}`);
 
   console.log('');
   console.log('✅ Analysis complete!');
   console.log(`  Domains: ${domainResults.length}`);
   console.log(`  URLs: ${totalUrls}`);
   console.log(`  Duration: ${formatDuration(elapsed)}`);
-  console.log('  Reports saved to:');
-  for (const p of savedPaths) {
+  console.log('  Measurements saved to:');
+  for (const p of measurementPaths) {
     console.log(`    ${p}`);
   }
+  console.log(`  Report: ${reportPath}`);
 }
 
 main().catch((err: unknown) => {

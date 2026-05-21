@@ -1,11 +1,22 @@
-import type { Report } from '../types/index.js';
+import type { Report } from "../types/index.js";
 
 export function generateHTML(report: Report): string {
   const esc = (s: string): string =>
-    s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+    s
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;")
+      .replace(/'/g, "&#39;");
 
   const timestamp = esc(report.meta.timestamp);
-  const jsonData = JSON.stringify(report);
+  // The embedded JS expects { domains: [...] } shape for rendering
+  const viewData = {
+    meta: report.meta,
+    domains: report.measurements.map(m => m.domain),
+    inventoryComparison: report.inventoryComparison,
+  };
+  const jsonData = JSON.stringify(viewData);
 
   return `<!DOCTYPE html>
 <html lang="en">
@@ -43,6 +54,15 @@ export function generateHTML(report: Report): string {
     th { background: #f9fafb; font-weight: 600; color: #374151; cursor: pointer; user-select: none; }
     th:hover { background: #f3f4f6; }
     tr:hover td { background: #f9fafb; }
+    .domain-indicator { width: 4px; height: 1rem; border-radius: 2px; display: inline-block; margin-right: 0.5rem; vertical-align: middle; }
+    .domain-indicator-0 { background: #3b82f6; }
+    .domain-indicator-1 { background: #22c55e; }
+    .domain-indicator-2 { background: #f59e0b; }
+    .domain-indicator-3 { background: #a855f7; }
+    .domain-indicator-4 { background: #f43f5e; }
+    .domain-indicator-5 { background: #06b6d4; }
+    .domain-indicator-6 { background: #f97316; }
+    .domain-indicator-7 { background: #6366f1; }
     .badge { display: inline-block; padding: 0.15rem 0.5rem; border-radius: 9999px; font-size: 0.7rem; font-weight: 600; }
     .badge-green { background: #dcfce7; color: #166534; }
     .badge-red { background: #fee2e2; color: #991b1b; }
@@ -56,11 +76,30 @@ export function generateHTML(report: Report): string {
     .domain-selector { display: flex; gap: 0.5rem; margin-bottom: 1rem; flex-wrap: wrap; }
     .domain-btn { padding: 0.35rem 0.75rem; border-radius: 0.5rem; border: 1px solid #d1d5db; cursor: pointer; font-size: 0.8rem; background: #fff; transition: all 0.15s; }
     .domain-btn.active { border-color: #2563eb; background: #eff6ff; color: #2563eb; font-weight: 600; }
+    .domain-btn[data-color="0"] { border-left: 3px solid #3b82f6; }
+    .domain-btn[data-color="1"] { border-left: 3px solid #22c55e; }
+    .domain-btn[data-color="2"] { border-left: 3px solid #f59e0b; }
+    .domain-btn[data-color="3"] { border-left: 3px solid #a855f7; }
+    .domain-btn[data-color="4"] { border-left: 3px solid #f43f5e; }
+    .domain-btn[data-color="5"] { border-left: 3px solid #06b6d4; }
+    .domain-btn[data-color="6"] { border-left: 3px solid #f97316; }
+    .domain-btn[data-color="7"] { border-left: 3px solid #6366f1; }
     .url-link { color: #2563eb; cursor: pointer; text-decoration: underline; }
     .url-link:hover { color: #1d4ed8; }
     .back-btn { display: inline-flex; align-items: center; gap: 0.25rem; color: #2563eb; cursor: pointer; font-size: 0.85rem; margin-bottom: 1rem; background: none; border: none; }
     .back-btn:hover { text-decoration: underline; }
     .empty { color: #9ca3af; font-style: italic; padding: 2rem; text-align: center; }
+    .domain-bg-0 { background: linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%); border-left: 4px solid #3b82f6; }
+    .domain-bg-1 { background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%); border-left: 4px solid #22c55e; }
+    .domain-bg-2 { background: linear-gradient(135deg, #fffbeb 0%, #fef3c7 100%); border-left: 4px solid #f59e0b; }
+    .domain-bg-3 { background: linear-gradient(135deg, #faf5ff 0%, #f3e8ff 100%); border-left: 4px solid #a855f7; }
+    .domain-bg-4 { background: linear-gradient(135deg, #fff1f2 0%, #ffe4e6 100%); border-left: 4px solid #f43f5e; }
+    .domain-bg-5 { background: linear-gradient(135deg, #ecfeff 0%, #cffafe 100%); border-left: 4px solid #06b6d4; }
+    .domain-bg-6 { background: linear-gradient(135deg, #fff7ed 0%, #ffedd5 100%); border-left: 4px solid #f97316; }
+    .domain-bg-7 { background: linear-gradient(135deg, #eef2ff 0%, #e0e7ff 100%); border-left: 4px solid #6366f1; }
+    .domain-section { border-radius: 0.75rem; padding: 1.5rem; margin-bottom: 1.5rem; }
+    .domain-section .card { background: rgba(255,255,255,0.8); backdrop-filter: blur(4px); }
+    .domain-section .section-subtitle { font-size: 0.95rem; font-weight: 600; margin-bottom: 0.75rem; color: #374151; }
     @media (max-width: 768px) {
       .container { padding: 1rem; }
       .chart-container { min-height: 250px; }
@@ -72,7 +111,7 @@ export function generateHTML(report: Report): string {
   <div class="header">
     <div>
       <h1>Tracemark Report</h1>
-      <div class="meta">${timestamp} &middot; v${esc(report.meta.version)} &middot; ${esc(String(report.meta.config.warmRuns))} warm runs &middot; Scenarios: ${esc(report.meta.config.scenarios.join(', '))}${report.meta.config.network?.throttle ? ` &middot; Throttle: ${esc(report.meta.config.network.profile)}` : ''}</div>
+      <div class="meta">${timestamp} &middot; v${esc(report.meta.version)} &middot; ${esc(String(report.meta.config.warmRuns))} warm runs &middot; Scenarios: ${esc(report.meta.config.scenarios.join(", "))}${report.meta.config.network?.throttle ? ` &middot; Throttle: ${esc(report.meta.config.network.profile)}` : ""}</div>
     </div>
     <div class="toggle-group">
       <button class="toggle-btn" :class="{ active: runType === 'cold' }" @click="setRunType('cold')">Cold</button>
@@ -93,7 +132,7 @@ export function generateHTML(report: Report): string {
       <div class="domain-selector">
         <button class="domain-btn" :class="{ active: selectedDomain === -1 }" @click="selectDomain(-1)">All Domains</button>
         <template x-for="(d, i) in domains" :key="i">
-          <button class="domain-btn" :class="{ active: selectedDomain === i }" @click="selectDomain(i)" x-text="d.name"></button>
+          <button class="domain-btn" :class="{ active: selectedDomain === i }" :data-color="i % 8" @click="selectDomain(i)" x-text="d.name"></button>
         </template>
       </div>
     </template>
@@ -142,15 +181,19 @@ export function generateHTML(report: Report): string {
     <template x-if="activeTab === 'overview' && !selectedUrl">
       <div>
         <div class="section-title">Dashboard</div>
-        <div class="grid grid-4">
-          <template x-for="(mc, i) in getOverviewCards()" :key="i">
-            <div class="card metric-card">
-              <div class="value" :style="{ color: mc.color || '#1f2937' }" x-text="mc.value"></div>
-              <div class="label" x-text="mc.label"></div>
-              <div class="domain-name" x-text="mc.domain"></div>
+        <template x-for="(d, dIdx) in domains" :key="'overview-domain-'+dIdx">
+          <div class="domain-section" :class="getDomainBgClass(dIdx)">
+            <div class="domain-section-header" style="font-weight:600;margin-bottom:0.75rem;" x-text="d.name"></div>
+            <div class="grid grid-4">
+              <template x-for="(mc, i) in getOverviewCardsForDomain(dIdx)" :key="'oc-'+dIdx+'-'+i">
+                <div class="card metric-card">
+                  <div class="value" :style="{ color: mc.color || '#1f2937' }" x-text="mc.value"></div>
+                  <div class="label" x-text="mc.label"></div>
+                </div>
+              </template>
             </div>
-          </template>
-        </div>
+          </div>
+        </template>
         <div class="card">
           <h3>All URLs</h3>
           <table>
@@ -169,7 +212,7 @@ export function generateHTML(report: Report): string {
             <tbody>
               <template x-for="row in getSortedUrlRows()" :key="row.domain + row.url">
                 <tr>
-                  <td x-text="row.domain"></td>
+                  <td><span class="domain-indicator" :class="'domain-indicator-' + (row.domainIdx % 8)"></span><span x-text="row.domain"></span></td>
                   <td><span class="url-link" @click="openUrlDrilldown(row.domainIdx, row.urlIdx)" x-text="row.url"></span></td>
                   <td><span class="badge" :class="row.status === 'ok' ? 'badge-green' : 'badge-red'" x-text="row.status"></span></td>
                   <td :style="{ color: getScoreColor(row.score) }" x-text="row.scoreDisplay"></td>
@@ -191,7 +234,7 @@ export function generateHTML(report: Report): string {
         <div class="section-title">Lighthouse Performance</div>
         <div class="chart-row">
           <template x-for="(d, i) in getVisibleDomains()" :key="'gauge-'+i">
-            <div class="card">
+            <div class="card" :class="getDomainBgClass(selectedDomain === -1 ? i : selectedDomain)">
               <h3 x-text="d.name + ' – Performance Score'"></h3>
               <div :id="'gauge-'+i" class="chart-container" style="min-height:250px;"></div>
             </div>
@@ -219,8 +262,8 @@ export function generateHTML(report: Report): string {
         <div class="card">
           <h3>Rendering Mode</h3>
           <div class="grid grid-3">
-            <template x-for="item in getSSRIndicators()" :key="item.domain">
-              <div class="card metric-card">
+            <template x-for="(item, i) in getSSRIndicators()" :key="item.domain">
+              <div class="card metric-card" :class="getDomainBgClass(selectedDomain === -1 ? i : selectedDomain)">
                 <div class="value"><span class="badge" :class="item.isSSR ? 'badge-green' : 'badge-yellow'" x-text="item.isSSR ? 'SSR' : 'CSR'"></span></div>
                 <div class="label" x-text="item.domain"></div>
                 <div class="domain-name" x-text="(item.hasRSC ? 'RSC ' : '') + (item.hasNextData ? 'Next.js' : '')"></div>
@@ -239,33 +282,79 @@ export function generateHTML(report: Report): string {
       </div>
     </template>
 
-    <!-- ========== JAVASCRIPT TAB ========== -->
-    <template x-if="activeTab === 'javascript' && !selectedUrl">
+    <!-- ========== BUNDLES (JS + CSS) TAB ========== -->
+    <template x-if="activeTab === 'bundles' && !selectedUrl">
       <div>
-        <div class="section-title">JavaScript Bundles</div>
+        <div class="section-title">Bundles (JavaScript + CSS)</div>
+
+        <!-- Combined Total -->
         <div class="card">
-          <h3>Total JS Size</h3>
-          <div id="chart-js-total" class="chart-container"></div>
+          <h3>Total Bundle Size (JS + CSS)</h3>
+          <div id="chart-bundles-total" class="chart-container"></div>
         </div>
+
+        <!-- Combined Unused donuts -->
+        <div class="chart-row">
+          <template x-for="(d, i) in getVisibleDomains()" :key="'unuseddonut-'+i">
+            <div class="card" :class="getDomainBgClass(selectedDomain === -1 ? i : selectedDomain)">
+              <h3 x-text="d.name + ' – Unused Code'"></h3>
+              <div :id="'unuseddonut-'+i" class="chart-container" style="min-height:250px;"></div>
+            </div>
+          </template>
+        </div>
+
+        <!-- JS vs CSS split -->
+        <div class="card">
+          <h3>JS vs CSS Breakdown</h3>
+          <div id="chart-js-css-split" class="chart-container"></div>
+        </div>
+
+        <!-- Bundle Classification (JS) -->
+        <div class="card">
+          <h3>JS Bundle Breakdown by Classification</h3>
+          <div id="chart-bundle-breakdown" class="chart-container"></div>
+        </div>
+
+        <!-- Unused JS and CSS side by side -->
         <div class="chart-row">
           <template x-for="(d, i) in getVisibleDomains()" :key="'jsdonut-'+i">
-            <div class="card">
+            <div class="card" :class="getDomainBgClass(selectedDomain === -1 ? i : selectedDomain)">
               <h3 x-text="d.name + ' – Unused JS'"></h3>
               <div :id="'jsdonut-'+i" class="chart-container" style="min-height:250px;"></div>
             </div>
           </template>
         </div>
-        <div class="card">
-          <h3>Bundle Breakdown by Classification</h3>
-          <div id="chart-bundle-breakdown" class="chart-container"></div>
+        <div class="chart-row">
+          <template x-for="(d, i) in getVisibleDomains()" :key="'cssdonut-'+i">
+            <div class="card" :class="getDomainBgClass(selectedDomain === -1 ? i : selectedDomain)">
+              <h3 x-text="d.name + ' – Unused CSS'"></h3>
+              <div :id="'cssdonut-'+i" class="chart-container" style="min-height:250px;"></div>
+            </div>
+          </template>
         </div>
+
+        <!-- Initial vs Lazy Chunks -->
         <div class="card">
-          <h3>Initial vs Lazy Chunks</h3>
+          <h3>Initial vs Lazy Chunks (JS)</h3>
           <div id="chart-lazy-initial" class="chart-container"></div>
         </div>
+
+        <!-- Chunk Statistics -->
         <div class="card">
-          <h3>Chunk Statistics</h3>
+          <h3>Chunk Statistics (JS)</h3>
           <div id="chart-chunk-stats" class="chart-container"></div>
+        </div>
+
+        <!-- Inline Styles -->
+        <div class="card">
+          <h3>Inline Styles (CSS)</h3>
+          <div id="chart-inline-styles" class="chart-container"></div>
+        </div>
+
+        <!-- CSS Framework Hints -->
+        <div class="card">
+          <h3>CSS Framework Hints</h3>
+          <div id="chart-css-frameworks" class="chart-container"></div>
         </div>
       </div>
     </template>
@@ -279,12 +368,18 @@ export function generateHTML(report: Report): string {
         </template>
         <template x-if="hasHttpTimingData()">
           <div>
-            <div class="grid grid-4">
-              <template x-for="(mc, i) in getHttpTimingCards()" :key="i">
-                <div class="card metric-card">
-                  <div class="value" :style="{ color: mc.color || '#1f2937' }" x-text="mc.value"></div>
-                  <div class="label" x-text="mc.label"></div>
-                  <div class="domain-name" x-text="mc.domain"></div>
+            <div class="chart-row">
+              <template x-for="(dg, di) in getHttpTimingCardsByDomain()" :key="dg.domain">
+                <div class="card" :class="getDomainBgClass(di)">
+                  <h3 x-text="dg.domain"></h3>
+                  <div class="grid grid-4">
+                    <template x-for="(mc, mi) in dg.cards" :key="mi">
+                      <div class="metric-card">
+                        <div class="value" :style="{ color: mc.color || '#1f2937' }" x-text="mc.value"></div>
+                        <div class="label" x-text="mc.label"></div>
+                      </div>
+                    </template>
+                  </div>
                 </div>
               </template>
             </div>
@@ -340,32 +435,7 @@ export function generateHTML(report: Report): string {
       </div>
     </template>
 
-    <!-- ========== CSS TAB ========== -->
-    <template x-if="activeTab === 'css' && !selectedUrl">
-      <div>
-        <div class="section-title">CSS Analysis</div>
-        <div class="card">
-          <h3>Total CSS Size</h3>
-          <div id="chart-css-total" class="chart-container"></div>
-        </div>
-        <div class="chart-row">
-          <template x-for="(d, i) in getVisibleDomains()" :key="'cssdonut-'+i">
-            <div class="card">
-              <h3 x-text="d.name + ' – Unused CSS'"></h3>
-              <div :id="'cssdonut-'+i" class="chart-container" style="min-height:250px;"></div>
-            </div>
-          </template>
-        </div>
-        <div class="card">
-          <h3>Inline Styles</h3>
-          <div id="chart-inline-styles" class="chart-container"></div>
-        </div>
-        <div class="card">
-          <h3>CSS Framework Hints</h3>
-          <div id="chart-css-frameworks" class="chart-container"></div>
-        </div>
-      </div>
-    </template>
+
   </div>
 
   <script>
@@ -387,8 +457,7 @@ export function generateHTML(report: Report): string {
           { id: 'lighthouse', label: 'Lighthouse' },
           { id: 'http-timing', label: 'HTTP Timing' },
           { id: 'html', label: 'HTML Payload' },
-          { id: 'javascript', label: 'JavaScript' },
-          { id: 'css', label: 'CSS' }
+          { id: 'bundles', label: 'Bundles (JS + CSS)' }
         ],
 
         /* ---- Helpers ---- */
@@ -396,6 +465,8 @@ export function generateHTML(report: Report): string {
         formatMs: formatMs,
         formatPercent: formatPercent,
         getScoreColor: getScoreColor,
+        getDomainBgClass: function(idx) { return 'domain-bg-' + (idx % 8); },
+        getDomainIdx: function(domainName) { var idx = 0; for (var i = 0; i < this.domains.length; i++) { if (this.domains[i].name === domainName) { idx = i; break; } } return idx; },
 
         /* ---- Navigation ---- */
         setTab(id) { this.activeTab = id; this.selectedUrl = null; this.$nextTick(() => this.renderAllCharts()); },
@@ -452,6 +523,23 @@ export function generateHTML(report: Report): string {
             var lcp = self.getAuditValue(lh, 'largest-contentful-paint');
             cards.push({ value: lcp != null ? formatMs(lcp) : '–', label: 'LCP', domain: d.name, color: '#fac858' });
           });
+          return cards;
+        },
+
+        getOverviewCardsForDomain(dIdx) {
+          var self = this;
+          var d = self.domains[dIdx];
+          var cards = [];
+          var u = self.getFirstOkUrl(d);
+          var lh = self.getLH(u, self.runType);
+          var pw = self.getPW(u, self.runType);
+          var score = lh ? lh.performanceScore : null;
+          var scoreNum = score != null ? Math.round(score * 100) : null;
+          cards.push({ value: scoreNum != null ? scoreNum : '–', label: 'Perf Score', color: scoreNum != null ? getScoreColor(scoreNum) : '#9ca3af' });
+          cards.push({ value: pw && pw.javascript ? formatBytes(pw.javascript.transferSize) : '–', label: 'JS Total', color: '#5470c6' });
+          cards.push({ value: pw && pw.css ? formatBytes(pw.css.transferSize) : '–', label: 'CSS Total', color: '#91cc75' });
+          var lcp = self.getAuditValue(lh, 'largest-contentful-paint');
+          cards.push({ value: lcp != null ? formatMs(lcp) : '–', label: 'LCP', color: '#fac858' });
           return cards;
         },
 
@@ -569,8 +657,7 @@ export function generateHTML(report: Report): string {
           if (self.activeTab === 'lighthouse') self.renderLighthouseCharts();
           if (self.activeTab === 'http-timing') self.renderHttpTimingCharts();
           if (self.activeTab === 'html') self.renderHTMLCharts();
-          if (self.activeTab === 'javascript') self.renderJSCharts();
-          if (self.activeTab === 'css') self.renderCSSCharts();
+          if (self.activeTab === 'bundles') self.renderBundlesCharts();
         },
 
         /* ---- Lighthouse Charts ---- */
@@ -709,37 +796,62 @@ export function generateHTML(report: Report): string {
           });
         },
 
-        /* ---- JavaScript Charts ---- */
-        renderJSCharts() {
+        /* ---- Bundles (JS + CSS) Charts ---- */
+        renderBundlesCharts() {
           var self = this;
           var visible = self.getVisibleDomains();
           var cats = visible.map(function(d){ return d.name; });
 
-          /* Total JS */
-          self.renderChart('chart-js-total', {
-            tooltip: { trigger: 'axis', formatter: function(p) { return escHtml(p[0].axisValue) + '<br/>JS: ' + formatBytes(p[0].value); } },
-            grid: { left: 80, right: 20, top: 10, bottom: 30 },
+          /* Total Bundle Size (JS + CSS stacked) */
+          self.renderChart('chart-bundles-total', {
+            tooltip: { trigger: 'axis', axisPointer: { type: 'shadow' }, formatter: function(params) { var s = escHtml(params[0].axisValue); var total = 0; params.forEach(function(p) { total += p.value; s += '<br/>' + p.marker + ' ' + escHtml(p.seriesName) + ': ' + formatBytes(p.value); }); s += '<br/><b>Total: ' + formatBytes(total) + '</b>'; return s; } },
+            legend: { top: 0 },
+            grid: { left: 80, right: 20, top: 40, bottom: 30 },
             xAxis: { type: 'category', data: cats },
             yAxis: { type: 'value', axisLabel: { formatter: function(v){ return formatBytes(v); } } },
-            series: [{ type: 'bar', data: visible.map(function(d) { var u = self.getFirstOkUrl(d); var pw = self.getPW(u, self.runType); return pw && pw.javascript ? pw.javascript.transferSize : 0; }), itemStyle: { color: '#5470c6' } }]
+            color: ['#5470c6', '#91cc75'],
+            series: [
+              { name: 'JavaScript', type: 'bar', stack: 'total', data: visible.map(function(d) { var u = self.getFirstOkUrl(d); var pw = self.getPW(u, self.runType); return pw && pw.javascript ? pw.javascript.transferSize : 0; }) },
+              { name: 'CSS', type: 'bar', stack: 'total', data: visible.map(function(d) { var u = self.getFirstOkUrl(d); var pw = self.getPW(u, self.runType); return pw && pw.css ? pw.css.transferSize : 0; }) }
+            ]
           });
 
-          /* Unused JS donuts */
+          /* Combined Unused Code donuts (JS + CSS) */
           visible.forEach(function(d, i) {
             var u = self.getFirstOkUrl(d);
             var pw = self.getPW(u, self.runType);
-            var total = pw && pw.javascript ? pw.javascript.resourceSize : 0;
-            var unused = pw && pw.javascript ? pw.javascript.unusedBytes : 0;
-            var used = Math.max(0, total - unused);
-            self.renderChart('jsdonut-' + i, {
+            var jsTotal = pw && pw.javascript ? pw.javascript.resourceSize : 0;
+            var jsUnused = pw && pw.javascript ? pw.javascript.unusedBytes : 0;
+            var cssTotal = pw && pw.css ? pw.css.resourceSize : 0;
+            var cssUnused = pw && pw.css ? pw.css.unusedBytes : 0;
+            var totalAll = jsTotal + cssTotal;
+            var unusedAll = jsUnused + cssUnused;
+            var usedAll = Math.max(0, totalAll - unusedAll);
+            self.renderChart('unuseddonut-' + i, {
               tooltip: { trigger: 'item', formatter: function(p) { return escHtml(p.name) + ': ' + formatBytes(p.value) + ' (' + p.percent + '%)'; } },
-              series: [{ type: 'pie', radius: ['45%', '70%'], label: { show: true, formatter: function(p) { return p.name + '\\n' + formatPercent(p.value / (total || 1)); } },
-                data: [{ value: used, name: 'Used', itemStyle: { color: '#91cc75' } }, { value: unused, name: 'Unused', itemStyle: { color: '#ee6666' } }]
+              series: [{ type: 'pie', radius: ['45%', '70%'], label: { show: true, formatter: function(p) { return p.name + '\\n' + formatPercent(p.value / (totalAll || 1)); } },
+                data: [{ value: usedAll, name: 'Used', itemStyle: { color: '#91cc75' } }, { value: unusedAll, name: 'Unused', itemStyle: { color: '#ee6666' } }]
               }]
             });
           });
 
-          /* Bundle breakdown stacked */
+          /* JS vs CSS split stacked bar */
+          self.renderChart('chart-js-css-split', {
+            tooltip: { trigger: 'axis', axisPointer: { type: 'shadow' }, formatter: function(params) { var s = escHtml(params[0].axisValue); params.forEach(function(p) { s += '<br/>' + p.marker + ' ' + escHtml(p.seriesName) + ': ' + formatBytes(p.value); }); return s; } },
+            legend: { top: 0 },
+            grid: { left: 80, right: 20, top: 40, bottom: 30 },
+            xAxis: { type: 'category', data: cats },
+            yAxis: { type: 'value', axisLabel: { formatter: function(v){ return formatBytes(v); } } },
+            color: ['#5470c6', '#73c0de', '#91cc75', '#a7f3d0'],
+            series: [
+              { name: 'JS Used', type: 'bar', stack: 'split', data: visible.map(function(d) { var u = self.getFirstOkUrl(d); var pw = self.getPW(u, self.runType); var total = pw && pw.javascript ? pw.javascript.resourceSize : 0; var unused = pw && pw.javascript ? pw.javascript.unusedBytes : 0; return Math.max(0, total - unused); }) },
+              { name: 'JS Unused', type: 'bar', stack: 'split', data: visible.map(function(d) { var u = self.getFirstOkUrl(d); var pw = self.getPW(u, self.runType); return pw && pw.javascript ? pw.javascript.unusedBytes : 0; }), itemStyle: { color: '#5470c6', opacity: 0.4 } },
+              { name: 'CSS Used', type: 'bar', stack: 'split', data: visible.map(function(d) { var u = self.getFirstOkUrl(d); var pw = self.getPW(u, self.runType); var total = pw && pw.css ? pw.css.resourceSize : 0; var unused = pw && pw.css ? pw.css.unusedBytes : 0; return Math.max(0, total - unused); }) },
+              { name: 'CSS Unused', type: 'bar', stack: 'split', data: visible.map(function(d) { var u = self.getFirstOkUrl(d); var pw = self.getPW(u, self.runType); return pw && pw.css ? pw.css.unusedBytes : 0; }), itemStyle: { color: '#91cc75', opacity: 0.4 } }
+            ]
+          });
+
+          /* Bundle breakdown stacked (JS) */
           var classifications = ['framework', 'vendor', 'internal', 'internal-page', 'internal-shell', 'external', 'cmp', 'analytics', 'tag-manager', 'document', 'unknown'];
           var classColors = { framework: '#5470c6', vendor: '#fac858', internal: '#3ba272', 'internal-page': '#91cc75', 'internal-shell': '#73c0de', external: '#ee6666', cmp: '#fc8452', analytics: '#9a60b4', 'tag-manager': '#ea7ccc', document: '#546570', unknown: '#999' };
           var breakdownSeries = classifications.map(function(cls) {
@@ -761,6 +873,36 @@ export function generateHTML(report: Report): string {
             xAxis: { type: 'category', data: cats },
             yAxis: { type: 'value', axisLabel: { formatter: function(v){ return formatBytes(v); } } },
             series: breakdownSeries
+          });
+
+          /* Unused JS donuts */
+          visible.forEach(function(d, i) {
+            var u = self.getFirstOkUrl(d);
+            var pw = self.getPW(u, self.runType);
+            var total = pw && pw.javascript ? pw.javascript.resourceSize : 0;
+            var unused = pw && pw.javascript ? pw.javascript.unusedBytes : 0;
+            var used = Math.max(0, total - unused);
+            self.renderChart('jsdonut-' + i, {
+              tooltip: { trigger: 'item', formatter: function(p) { return escHtml(p.name) + ': ' + formatBytes(p.value) + ' (' + p.percent + '%)'; } },
+              series: [{ type: 'pie', radius: ['45%', '70%'], label: { show: true, formatter: function(p) { return p.name + '\\n' + formatPercent(p.value / (total || 1)); } },
+                data: [{ value: used, name: 'Used', itemStyle: { color: '#91cc75' } }, { value: unused, name: 'Unused', itemStyle: { color: '#ee6666' } }]
+              }]
+            });
+          });
+
+          /* Unused CSS donuts */
+          visible.forEach(function(d, i) {
+            var u = self.getFirstOkUrl(d);
+            var pw = self.getPW(u, self.runType);
+            var total = pw && pw.css ? pw.css.resourceSize : 0;
+            var unused = pw && pw.css ? pw.css.unusedBytes : 0;
+            var used = Math.max(0, total - unused);
+            self.renderChart('cssdonut-' + i, {
+              tooltip: { trigger: 'item', formatter: function(p) { return escHtml(p.name) + ': ' + formatBytes(p.value) + ' (' + p.percent + '%)'; } },
+              series: [{ type: 'pie', radius: ['45%', '70%'], label: { show: true, formatter: function(p) { return p.name + '\\n' + formatPercent(p.value / (total || 1)); } },
+                data: [{ value: used, name: 'Used', itemStyle: { color: '#91cc75' } }, { value: unused, name: 'Unused', itemStyle: { color: '#ee6666' } }]
+              }]
+            });
           });
 
           /* Lazy vs Initial */
@@ -794,6 +936,54 @@ export function generateHTML(report: Report): string {
               { name: 'Count', type: 'bar', yAxisIndex: 1, data: visible.map(function(d) { var u = self.getFirstOkUrl(d); var pw = self.getPW(u, self.runType); return pw && pw.javascript && pw.javascript.chunks ? pw.javascript.chunks.total : 0; }) }
             ]
           });
+
+          /* Inline Styles */
+          self.renderChart('chart-inline-styles', {
+            tooltip: { trigger: 'axis', axisPointer: { type: 'shadow' } },
+            legend: { top: 0 },
+            grid: { left: 80, right: 80, top: 40, bottom: 30 },
+            xAxis: { type: 'category', data: cats },
+            yAxis: [
+              { type: 'value', name: 'Size', axisLabel: { formatter: function(v){ return formatBytes(v); } } },
+              { type: 'value', name: 'Count', position: 'right' }
+            ],
+            color: ['#91cc75', '#fac858'],
+            series: [
+              { name: 'Total Size', type: 'bar', yAxisIndex: 0, data: visible.map(function(d) { var u = self.getFirstOkUrl(d); var pw = self.getPW(u, self.runType); return pw && pw.css && pw.css.inline ? pw.css.inline.totalSize : 0; }) },
+              { name: 'Count', type: 'bar', yAxisIndex: 1, data: visible.map(function(d) { var u = self.getFirstOkUrl(d); var pw = self.getPW(u, self.runType); return pw && pw.css && pw.css.inline ? pw.css.inline.count : 0; }) }
+            ]
+          });
+
+          /* CSS Framework Hints */
+          var hintMap = {};
+          visible.forEach(function(d) {
+            var u = self.getFirstOkUrl(d);
+            var pw = self.getPW(u, 'cold');
+            if (pw && pw.css && pw.css.frameworkHints) {
+              pw.css.frameworkHints.forEach(function(h) {
+                if (!hintMap[h.framework]) hintMap[h.framework] = {};
+                hintMap[h.framework][d.name] = h.confidence;
+              });
+            }
+          });
+          var frameworks = Object.keys(hintMap);
+          if (frameworks.length > 0) {
+            var fwSeries = visible.map(function(d, di) {
+              return {
+                name: d.name, type: 'bar',
+                data: frameworks.map(function(fw) { return hintMap[fw][d.name] || 0; }),
+                itemStyle: { color: COLORS[di % COLORS.length] }
+              };
+            });
+            self.renderChart('chart-css-frameworks', {
+              tooltip: { trigger: 'axis', formatter: function(params) { var s = escHtml(params[0].axisValue); params.forEach(function(p) { if (p.value > 0) s += '<br/>' + p.marker + ' ' + escHtml(p.seriesName) + ': ' + (p.value * 100).toFixed(0) + '%'; }); return s; } },
+              legend: { top: 0 },
+              grid: { left: 120, right: 30, top: 40, bottom: 30 },
+              yAxis: { type: 'category', data: frameworks },
+              xAxis: { type: 'value', max: 1, axisLabel: { formatter: function(v){ return (v * 100) + '%'; } } },
+              series: fwSeries
+            });
+          }
         },
 
         /* ---- HTTP-Timing Helpers & Charts ---- */
@@ -804,18 +994,23 @@ export function generateHTML(report: Report): string {
           });
         },
 
-        getHttpTimingCards() {
+        getHttpTimingCardsByDomain() {
           var self = this;
-          var cards = [];
+          var groups = [];
           self.getVisibleDomains().forEach(function(d) {
             var u = self.getFirstOkUrl(d);
             var ht = u && u.httpTiming ? u.httpTiming : null;
-            cards.push({ value: ht ? formatMs(ht.ttfb.p50) : '–', label: 'TTFB p50', domain: d.name, color: '#5470c6' });
-            cards.push({ value: ht ? formatMs(ht.total.p50) : '–', label: 'Total p50', domain: d.name, color: '#91cc75' });
-            cards.push({ value: ht ? formatBytes(ht.responseSize) : '–', label: 'Response Size', domain: d.name, color: '#fac858' });
-            cards.push({ value: ht ? (ht.cacheStatus || '–') : '–', label: 'Cache', domain: d.name, color: '#73c0de' });
+            groups.push({
+              domain: d.name,
+              cards: [
+                { value: ht ? formatMs(ht.ttfb.p50) : '–', label: 'TTFB p50', color: '#5470c6' },
+                { value: ht ? formatMs(ht.total.p50) : '–', label: 'Total p50', color: '#91cc75' },
+                { value: ht ? formatBytes(ht.responseSize) : '–', label: 'Response Size', color: '#fac858' },
+                { value: ht ? (ht.cacheStatus || '–') : '–', label: 'Cache', color: '#73c0de' }
+              ]
+            });
           });
-          return cards;
+          return groups;
         },
 
         getHttpTimingRows() {
@@ -919,84 +1114,6 @@ export function generateHTML(report: Report): string {
           });
         },
 
-        /* ---- CSS Charts ---- */
-        renderCSSCharts() {
-          var self = this;
-          var visible = self.getVisibleDomains();
-          var cats = visible.map(function(d){ return d.name; });
-
-          /* Total CSS */
-          self.renderChart('chart-css-total', {
-            tooltip: { trigger: 'axis', formatter: function(p) { return escHtml(p[0].axisValue) + '<br/>CSS: ' + formatBytes(p[0].value); } },
-            grid: { left: 80, right: 20, top: 10, bottom: 30 },
-            xAxis: { type: 'category', data: cats },
-            yAxis: { type: 'value', axisLabel: { formatter: function(v){ return formatBytes(v); } } },
-            series: [{ type: 'bar', data: visible.map(function(d) { var u = self.getFirstOkUrl(d); var pw = self.getPW(u, self.runType); return pw && pw.css ? pw.css.transferSize : 0; }), itemStyle: { color: '#91cc75' } }]
-          });
-
-          /* Unused CSS donuts */
-          visible.forEach(function(d, i) {
-            var u = self.getFirstOkUrl(d);
-            var pw = self.getPW(u, self.runType);
-            var total = pw && pw.css ? pw.css.resourceSize : 0;
-            var unused = pw && pw.css ? pw.css.unusedBytes : 0;
-            var used = Math.max(0, total - unused);
-            self.renderChart('cssdonut-' + i, {
-              tooltip: { trigger: 'item', formatter: function(p) { return escHtml(p.name) + ': ' + formatBytes(p.value) + ' (' + p.percent + '%)'; } },
-              series: [{ type: 'pie', radius: ['45%', '70%'], label: { show: true, formatter: function(p) { return p.name + '\\n' + formatPercent(p.value / (total || 1)); } },
-                data: [{ value: used, name: 'Used', itemStyle: { color: '#91cc75' } }, { value: unused, name: 'Unused', itemStyle: { color: '#ee6666' } }]
-              }]
-            });
-          });
-
-          /* Inline Styles */
-          self.renderChart('chart-inline-styles', {
-            tooltip: { trigger: 'axis', axisPointer: { type: 'shadow' } },
-            legend: { top: 0 },
-            grid: { left: 80, right: 80, top: 40, bottom: 30 },
-            xAxis: { type: 'category', data: cats },
-            yAxis: [
-              { type: 'value', name: 'Size', axisLabel: { formatter: function(v){ return formatBytes(v); } } },
-              { type: 'value', name: 'Count', position: 'right' }
-            ],
-            color: ['#91cc75', '#fac858'],
-            series: [
-              { name: 'Total Size', type: 'bar', yAxisIndex: 0, data: visible.map(function(d) { var u = self.getFirstOkUrl(d); var pw = self.getPW(u, self.runType); return pw && pw.css && pw.css.inline ? pw.css.inline.totalSize : 0; }) },
-              { name: 'Count', type: 'bar', yAxisIndex: 1, data: visible.map(function(d) { var u = self.getFirstOkUrl(d); var pw = self.getPW(u, self.runType); return pw && pw.css && pw.css.inline ? pw.css.inline.count : 0; }) }
-            ]
-          });
-
-          /* CSS Framework Hints */
-          var hintMap = {};
-          visible.forEach(function(d) {
-            var u = self.getFirstOkUrl(d);
-            var pw = self.getPW(u, 'cold');
-            if (pw && pw.css && pw.css.frameworkHints) {
-              pw.css.frameworkHints.forEach(function(h) {
-                if (!hintMap[h.framework]) hintMap[h.framework] = {};
-                hintMap[h.framework][d.name] = h.confidence;
-              });
-            }
-          });
-          var frameworks = Object.keys(hintMap);
-          if (frameworks.length > 0) {
-            var fwSeries = visible.map(function(d, di) {
-              return {
-                name: d.name, type: 'bar',
-                data: frameworks.map(function(fw) { return hintMap[fw][d.name] || 0; }),
-                itemStyle: { color: COLORS[di % COLORS.length] }
-              };
-            });
-            self.renderChart('chart-css-frameworks', {
-              tooltip: { trigger: 'axis', formatter: function(params) { var s = escHtml(params[0].axisValue); params.forEach(function(p) { if (p.value > 0) s += '<br/>' + p.marker + ' ' + escHtml(p.seriesName) + ': ' + (p.value * 100).toFixed(0) + '%'; }); return s; } },
-              legend: { top: 0 },
-              grid: { left: 120, right: 30, top: 40, bottom: 30 },
-              yAxis: { type: 'category', data: frameworks },
-              xAxis: { type: 'value', max: 1, axisLabel: { formatter: function(v){ return (v * 100) + '%'; } } },
-              series: fwSeries
-            });
-          }
-        }
       };
     }
 
@@ -1039,4 +1156,3 @@ export function generateHTML(report: Report): string {
 </body>
 </html>`;
 }
-

@@ -1,9 +1,9 @@
 import * as fs from 'fs/promises';
 import * as path from 'path';
 import * as yaml from 'js-yaml';
-import type { Config, DomainInput, DomainResult, URLResult, Report } from '../types/index.js';
+import type { Config, DomainInput, DomainResult, URLResult, Measurement } from '../types/index.js';
 import { runURL } from '../scenarios/index.js';
-import { generateReport, saveReport, loadReport } from '../reporter/index.js';
+import { createMeasurement, generateReport, saveMeasurement, saveReport, loadReport } from '../reporter/index.js';
 import { generateHTML } from '../visualizer/index.js';
 import { Protocol } from '../protocol/index.js';
 
@@ -51,16 +51,7 @@ function formatDuration(ms: number): string {
   return minutes > 0 ? `${minutes}m ${seconds}s` : `${seconds}s`;
 }
 
-function mergeReports(reports: Report[]): Report {
-  const base = reports[0];
-  if (reports.length === 1) return base;
 
-  const allDomains = reports.flatMap(r => r.domains);
-  return {
-    meta: base.meta,
-    domains: allDomains,
-  };
-}
 
 async function resolveUrlFiles(urlArgs: string[]): Promise<string[]> {
   if (urlArgs.length > 0) return urlArgs;
@@ -73,7 +64,7 @@ async function resolveUrlFiles(urlArgs: string[]): Promise<string[]> {
   return yamlFiles;
 }
 
-async function runAnalysis(args: { config: string; urls: string[] }): Promise<string[]> {
+async function runAnalysis(args: { config: string; urls: string[] }): Promise<string> {
   console.log('🚀 Tracemark - Performance Analysis');
   console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
   console.log(`Config: ${args.config}`);
@@ -159,55 +150,47 @@ async function runAnalysis(args: { config: string; urls: string[] }): Promise<st
     domainResults.push({ name: domainInput.name, urls: urlResults });
   }
 
-  const report = generateReport(domainResults, config);
-  const savedPaths = await saveReport(report);
-
-  // Save protocol alongside the first report
-  if (savedPaths.length > 0) {
-    const reportDir = savedPaths[0].replace(/\/report\.json$/, '');
-    const protocolPath = await protocol.save(reportDir);
-    console.log(`  Protocol: ${protocolPath}`);
+  // Save individual measurements per domain
+  const measurements: Measurement[] = [];
+  for (const domainResult of domainResults) {
+    const measurement = createMeasurement(domainResult, config);
+    measurements.push(measurement);
+    const mPath = await saveMeasurement(measurement);
+    console.log(`  Measurement: ${mPath}`);
   }
+
+  // Save aggregated report
+  const report = generateReport(measurements);
+  const reportPath = await saveReport(report);
+
+  // Save protocol alongside the report
+  const reportDir = reportPath.replace(/\/report\.json$/, '');
+  const protocolPath = await protocol.save(reportDir);
+  console.log(`  Protocol: ${protocolPath}`);
 
   console.log('');
   console.log('✅ Analysis complete!');
   console.log(`  Domains: ${domainResults.length}`);
   console.log(`  URLs: ${totalUrls}`);
-  console.log('  Reports saved to:');
-  for (const p of savedPaths) {
-    console.log(`    ${p}`);
-  }
+  console.log(`  Report: ${reportPath}`);
 
-  return savedPaths;
+  return reportPath;
 }
 
-async function runVisualization(reportPaths: string[]): Promise<void> {
+async function runVisualization(reportPath: string): Promise<void> {
   console.log('');
   console.log('🎨 Tracemark - Report Visualization');
   console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
 
-  const reports: Report[] = [];
-  for (const filePath of reportPaths) {
-    try {
-      const report = await loadReport(filePath);
-      reports.push(report);
-    } catch (err) {
-      const message = err instanceof Error ? err.message : String(err);
-      console.error(`❌ ${message}`);
-      process.exit(1);
-    }
-  }
-
-  console.log(`Reports: ${reports.length} file${reports.length > 1 ? 's' : ''} loaded`);
-
-  const merged = mergeReports(reports);
-  const domainNames = merged.domains.map(d => d.name).join(', ');
+  const report = await loadReport(reportPath);
+  const domainNames = report.measurements.map(m => m.domain.name).join(', ');
+  console.log(`Report: ${reportPath}`);
   console.log(`Domains: ${domainNames}`);
   console.log('');
 
-  const html = generateHTML(merged);
+  const html = generateHTML(report);
 
-  const outputPath = reportPaths[0].replace(/\.json$/, '.html');
+  const outputPath = reportPath.replace(/\.json$/, '.html');
   const outputDir = path.dirname(outputPath);
   await fs.mkdir(outputDir, { recursive: true });
   await fs.writeFile(outputPath, html, 'utf-8');
@@ -220,8 +203,8 @@ async function main(): Promise<void> {
   const startTime = Date.now();
   const args = parseArgs(process.argv);
 
-  const savedPaths = await runAnalysis(args);
-  await runVisualization(savedPaths);
+  const reportPath = await runAnalysis(args);
+  await runVisualization(reportPath);
 
   const elapsed = Date.now() - startTime;
   console.log('');

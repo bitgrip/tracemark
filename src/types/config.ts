@@ -1,6 +1,6 @@
-export type Scenario = 'full' | 'no-third-party' | 'no-tracking-only';
-export type RunType = 'cold' | 'warm';
-export type ThrottleProfileName = '4g' | 'cable-10' | 'cable-5' | '3g';
+export type Scenario = "full" | "no-third-party" | "no-tracking-only";
+export type RunType = "cold" | "warm";
+export type ThrottleProfileName = "4g" | "cable-10" | "cable-5" | "3g";
 
 export interface Config {
   warmRuns: number;
@@ -25,6 +25,7 @@ export interface Config {
   blocklists: {
     thirdParty: string[];
     trackingOnly: string[];
+    criticalThirdParty: string[];
   };
 }
 
