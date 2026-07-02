@@ -10,13 +10,7 @@ export function generateHTML(report: Report): string {
       .replace(/'/g, "&#39;");
 
   const timestamp = esc(report.meta.timestamp);
-  // The embedded JS expects { domains: [...] } shape for rendering
-  const viewData = {
-    meta: report.meta,
-    domains: report.measurements.map(m => m.domain),
-    inventoryComparison: report.inventoryComparison,
-  };
-  const jsonData = JSON.stringify(viewData);
+  const jsonData = JSON.stringify(report);
 
   return `<!DOCTYPE html>
 <html lang="en">
