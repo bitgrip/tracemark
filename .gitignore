@@ -11,3 +11,6 @@ urls/*
 !urls/README.md
 stories/*
 audits/*
+measurements/**/*.*
+*.zip
+.DS_Store
