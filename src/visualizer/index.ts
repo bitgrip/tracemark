@@ -1,4 +1,15 @@
+import { readFileSync } from "fs";
+import { createRequire } from "module";
 import type { Report } from "../types/index.js";
+
+const require = createRequire(import.meta.url);
+
+/** Read a vendored library from node_modules and neutralize any `</script>`
+ *  sequences so it can be safely inlined into the HTML. */
+function inlineVendor(pkgFile: string): string {
+  const code = readFileSync(require.resolve(pkgFile), "utf-8");
+  return code.replace(/<\/script>/gi, "<\\/script>");
+}
 
 export function generateHTML(report: Report): string {
   const esc = (s: string): string =>
@@ -11,6 +22,8 @@ export function generateHTML(report: Report): string {
 
   const timestamp = esc(report.meta.timestamp);
   const jsonData = JSON.stringify(report);
+  const echartsJs = inlineVendor("echarts/dist/echarts.min.js");
+  const alpineJs = inlineVendor("alpinejs/dist/cdn.min.js");
 
   return `<!DOCTYPE html>
 <html lang="en">
@@ -18,8 +31,7 @@ export function generateHTML(report: Report): string {
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Tracemark Report – ${timestamp}</title>
-  <script src="https://cdn.jsdelivr.net/npm/echarts@5/dist/echarts.min.js"><\/script>
-  <script src="https://cdn.jsdelivr.net/npm/alpinejs@3/dist/cdn.min.js" defer><\/script>
+  <script>${echartsJs}<\/script>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
     body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #f3f4f6; color: #1f2937; line-height: 1.5; }
@@ -444,7 +456,7 @@ export function generateHTML(report: Report): string {
         sortCol: null,
         sortAsc: true,
         charts: {},
-        domains: REPORT_DATA.domains,
+        domains: (REPORT_DATA.measurements || []).map(function(m) { return m.domain; }),
 
         mainTabs: [
           { id: 'overview', label: 'Overview' },
@@ -1147,6 +1159,8 @@ export function generateHTML(report: Report): string {
       return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
     }
   <\/script>
+  <!-- Alpine loads last so tracemarkApp() and helpers are defined before it initializes -->
+  <script>${alpineJs}<\/script>
 </body>
 </html>`;
 }
